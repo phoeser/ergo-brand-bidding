@@ -190,8 +190,35 @@ def md_table(headers, rows):
 
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
+    today = dt.date.today()
+    iso = today.isocalendar()
+    fallback_week = f"{iso.year}-KW{iso.week:02d}"
     if not week_rows:
-        raise SystemExit(f"{week_csv} enthaelt keine Zeilen.")
+        # Scan lief erfolgreich, aber keine bezahlten Ads gefunden
+        current_week = fallback_week
+        run_date = today.isoformat()
+        provider = os.getenv("SERP_PROVIDER", "serper")
+        clusters = list(KEYWORD_CLUSTERS.keys()) if hasattr(sys.modules[__name__], 'KEYWORD_CLUSTERS') else []
+        # Leere Historie-Erweiterung (keine neuen Zeilen)
+        history, n_added = append_history([])
+        out_path = f"ERGO_Brand_Bidding_{current_week}.md"
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(f"# ERGO Brand Bidding – {current_week}\n\n")
+            f.write(f"*Lauf-Datum: {run_date} · Provider: {provider} · "
+                    f"Anzeigen-Treffer: 0 · Unique Advertiser: 0 · Trademark-Pruefkandidaten: 0*\n\n")
+            f.write("## Ergebnis\n\n")
+            f.write("*Heute wurden keine bezahlten Anzeigen (Brand Bidding) fuer die gescannten ERGO-Keywords gefunden.*\n\n")
+            f.write("---\n")
+            f.write(f"*Automatisch erzeugt am {today.isoformat()}. "
+                    f"Scoring: 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*\n")
+        summary = (
+            f"ERGO Brand Bidding {current_week}: 0 Anzeigen-Treffer, 0 Advertiser.\n"
+            f"{n_added} neue Zeilen in der Historie.\n"
+            f"Keine Wettbewerber-Anzeigen erfasst.\n"
+            f"Trademark-Pruefkandidaten: 0 (Hinweis, keine rechtl. Bewertung).\n"
+            f"Report: {out_path}"
+        )
+        return out_path, summary
     current_week = week_rows[0]["iso_week"]
     run_date = week_rows[0]["run_date"]
     provider = week_rows[0]["provider"]
