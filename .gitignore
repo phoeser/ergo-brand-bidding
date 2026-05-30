@@ -1,0 +1,16 @@
+# Secrets – NIEMALS committen
+serp_secrets.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Rohdaten je Lauf (reproduzierbar) – Historie + Reports bleiben im Repo
+ergo_brand_bidding_20*.csv
+ergo_brand_bidding_20*.json
+
+# Lokale/Hilfsdateien (gehören nicht ins Repo)
+Jason.txt
+BEISPIEL_*.md
+*.pptx
+*.potx
