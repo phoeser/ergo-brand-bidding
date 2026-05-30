@@ -1,51 +1,21 @@
 #!/usr/bin/env python3
-"""
-ERGO Brand Bidding – HTML-Dashboard-Generator (Standardlib-only).
+"""ERGO Brand Bidding - HTML-Dashboard-Generator (Standardlib-only)."""
 
-Liest ergo_brand_bidding_history.csv, berechnet Scores/Trends (nutzt die
-Funktionen aus build_report.py) und schreibt ein self-contained index.html
-mit Chart.js (von CDN). Daten sind in die Seite eingebettet -> kein Fetch,
-keine Auth noetig; funktioniert lokal (Doppelklick) und auf GitHub Pages.
-
-Aufruf:  python build_dashboard.py
-"""
-
+import os
 import json
 import datetime as dt
-from collections import defaultdict
 
-import build_report as br  # gleiche Scoring-Logik, eine Quelle der Wahrheit
+import build_report as br
 
 HISTORY_FILE = br.HISTORY_FILE
 ERGO_OWN = br.ERGO_OWN
+ROUTINE_URL = "https://claude.ai/code/routines/trig_01AWBd3vmVJ3sLBC2USFVHGE"
 
 
 def build_data():
-    import os, datetime as _dt, re as _re
     history = br.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
     if not history:
-        # Kein Datensatz vorhanden – erzeuge leeres Dashboard mit heutigem Datum
-        today = _dt.date.today().isoformat()
-        d = _dt.date.today()
-        iso_week = f"{d.isocalendar()[0]}-W{d.isocalendar()[1]:02d}"
-        import glob
-        csvs = sorted(glob.glob("ergo_brand_bidding_*.csv"))
-        run_date = today
-        if csvs:
-            m = _re.search(r"(\d{4}-\d{2}-\d{2})", csvs[-1])
-            run_date = m.group(1) if m else today
-        return {
-            "generated": today,
-            "current_week": iso_week,
-            "run_date": run_date,
-            "provider": os.getenv("SERP_PROVIDER", "serper"),
-            "kpis": {"ads": 0, "advertisers": 0, "trademark": 0},
-            "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"],
-            "scores": {},
-            "delta": {},
-            "trend": {"weeks": [iso_week], "total": [0], "byCluster": {}},
-            "trademark": [],
-        }
+        raise SystemExit(HISTORY_FILE + " fehlt oder ist leer.")
     weeks = sorted({r["iso_week"] for r in history})
     current_week = weeks[-1]
     week_rows = [r for r in history if r["iso_week"] == current_week]
@@ -53,18 +23,13 @@ def build_data():
     provider = week_rows[0].get("provider", "")
     clusters = list(dict.fromkeys(r["cluster"] for r in history))
 
-    # Scores je Cluster (aktuelle Woche)
-    scores = {}
-    for cl in clusters:
-        scores[cl] = br.score_cluster(week_rows, history, cl, current_week)
+    scores = {cl: br.score_cluster(week_rows, history, cl, current_week) for cl in clusters}
 
-    # Delta zur Vorwoche
     delta = {}
     for cl in clusters:
         new, gone, pw = br.delta_bidders(week_rows, history, cl, current_week)
         delta[cl] = {"prev_week": pw, "new": new, "gone": gone}
 
-    # Trend: distinkte Wettbewerber-Domains je Woche (letzte 8 Wochen)
     trend_weeks = weeks[-8:]
     total_trend, by_cluster_trend = [], {cl: [] for cl in clusters}
     for wk in trend_weeks:
@@ -91,6 +56,7 @@ def build_data():
         "current_week": current_week,
         "run_date": run_date,
         "provider": provider,
+        "routine_url": ROUTINE_URL,
         "kpis": {"ads": n_ads, "advertisers": n_adv, "trademark": len(trademark)},
         "clusters": clusters,
         "scores": scores,
@@ -105,35 +71,40 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ERGO Brand Bidding – Dashboard</title>
+<title>ERGO Brand Bidding - Dashboard</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ERGO BB">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root{--bg:#f5f6f8;--card:#fff;--ink:#1c2330;--muted:#6b7280;--line:#e6e8ec;
-        --accent:#c8102e;--accent2:#2563eb;--ergo:#9aa0a6;}
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1c2330;--muted:#6b7280;--line:#e6e8ec;--accent:#c8102e;}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
   .wrap{max-width:1080px;margin:0 auto;padding:24px 18px 60px;}
   h1{font-size:22px;margin:0 0 2px;}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+  .actions button,.actions a{font-family:inherit;font-size:13px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:9px 18px;cursor:pointer;text-decoration:none;}
+  .actions a.prim{background:var(--accent);color:#fff;border-color:var(--accent);}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
   .kpi .n{font-size:26px;font-weight:700;}
   .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-        padding:16px 18px;margin-bottom:18px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
   .card h2{font-size:15px;margin:0 0 12px;}
   .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-  .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;
-       font-size:13px;cursor:pointer;color:var(--ink);}
+  .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--ink);}
   .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
   th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em;}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
   .ergo{color:var(--accent);font-weight:600;}
-  .badge{display:inline-block;background:#fde7ea;color:var(--accent);border-radius:6px;
-         padding:1px 7px;font-size:11px;margin-left:6px;}
+  .badge{display:inline-block;background:#fde7ea;color:var(--accent);border-radius:6px;padding:1px 7px;font-size:11px;margin-left:6px;}
   .delta{font-size:13px;color:var(--muted);margin-top:6px;}
   .new{color:#15803d;} .gone{color:#b91c1c;}
   .note{color:var(--muted);font-size:12px;margin-top:8px;}
@@ -143,76 +114,62 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </head>
 <body>
 <div class="wrap">
-  <h1>ERGO Brand Bidding – Dashboard</h1>
+  <h1>ERGO Brand Bidding - Dashboard</h1>
   <div class="sub" id="sub"></div>
-
+  <div class="actions">
+    <button onclick="location.reload()">&#128260; Aktualisieren</button>
+    <a class="prim" id="runBtn" target="_blank" rel="noopener">&#9654;&#65039; Neuen Scan starten</a>
+  </div>
   <div class="kpis" id="kpis"></div>
-
   <div class="card">
-    <h2>Intensitäts-Score je Cluster</h2>
+    <h2>Intensitaets-Score je Cluster</h2>
     <div class="tabs" id="tabs"></div>
     <canvas id="barChart"></canvas>
     <div class="delta" id="delta"></div>
   </div>
-
   <div class="card">
     <h2>Top-Bieter <span id="clName"></span></h2>
     <table id="bidTable"><thead><tr>
-      <th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Präsenz</th>
+      <th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Praesenz</th>
       <th class="num">Best-Rank</th><th>Persistenz</th>
     </tr></thead><tbody></tbody></table>
   </div>
-
   <div class="card">
-    <h2>Wochentrend – Anzahl Wettbewerber-Domains</h2>
+    <h2>Wochentrend - Anzahl Wettbewerber-Domains</h2>
     <canvas id="trendChart"></canvas>
   </div>
-
   <div class="card">
-    <h2>Trademark-Prüfkandidaten</h2>
-    <div class="note">Hinweis zur menschlichen/juristischen Prüfung – keine rechtliche Bewertung.
-    Markenname „ERGO" steht im Anzeigentext.</div>
+    <h2>Trademark-Pruefkandidaten</h2>
+    <div class="note">Hinweis zur menschlichen/juristischen Pruefung - keine rechtliche Bewertung.</div>
     <table id="tmTable"><thead><tr>
       <th>Domain</th><th>Cluster</th><th>Keyword</th><th>Anzeigentitel</th>
     </tr></thead><tbody></tbody></table>
   </div>
-
-  <div class="note">Automatisch erzeugt am <span id="gen"></span> ·
-    Scoring: 0,5·Präsenz + 0,3·Position + 0,2·Persistenz (×100) ·
-    ERGO-eigene Domains sind markiert und keine Trademark-Kandidaten.</div>
+  <div class="note">Automatisch erzeugt am <span id="gen"></span> - Scoring: 0,5 Praesenz + 0,3 Position + 0,2 Persistenz (x100).</div>
 </div>
-
 <script>
 const DATA = __DATA__;
 let current = DATA.clusters[0];
 let barChart, trendChart;
-
-document.getElementById('sub').textContent =
-  'Stand: ' + DATA.current_week + ' · Lauf ' + DATA.run_date + ' · Provider ' + DATA.provider;
+document.getElementById('sub').textContent = 'Stand: ' + DATA.current_week + ' - Lauf ' + DATA.run_date + ' - Provider ' + DATA.provider;
 document.getElementById('gen').textContent = DATA.generated;
-
+document.getElementById('runBtn').href = DATA.routine_url;
 const kpiDefs = [['ads','Anzeigen-Treffer'],['advertisers','Unique Advertiser'],['trademark','Trademark-Kandidaten']];
 document.getElementById('kpis').innerHTML = kpiDefs.map(function(k){
   return '<div class="kpi"><div class="n">'+DATA.kpis[k[0]]+'</div><div class="l">'+k[1]+'</div></div>';
 }).join('');
-
 document.getElementById('tabs').innerHTML = DATA.clusters.map(function(c){
   return '<button class="tab" data-c="'+c+'">'+c+'</button>';
 }).join('');
 Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
   b.addEventListener('click', function(){ current = b.dataset.c; render(); });
 });
-
-function fmtPersist(s){ return s; }
-
 function render(){
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
     b.classList.toggle('active', b.dataset.c === current);
   });
-  document.getElementById('clName').textContent = '– ' + current;
+  document.getElementById('clName').textContent = '- ' + current;
   const rows = (DATA.scores[current]||[]).slice(0,10);
-
-  // Bar chart
   const labels = rows.map(function(r){return r.domain;});
   const vals = rows.map(function(r){return r.score;});
   const colors = rows.map(function(r){return r.is_ergo ? '#9aa0a6' : '#c8102e';});
@@ -220,45 +177,31 @@ function render(){
   barChart = new Chart(document.getElementById('barChart'), {
     type:'bar',
     data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:4}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false}},
-      scales:{x:{max:100,title:{display:true,text:'Score'}}}}
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,title:{display:true,text:'Score'}}}}
   });
-
-  // Delta
   const d = DATA.delta[current] || {};
   let dh = '';
   if(d.prev_week){
-    dh = '<b>vs '+d.prev_week+'</b> · <span class="new">NEU: '+(d.new.length?d.new.join(', '):'–')+
-         '</span> · <span class="gone">VERSCHWUNDEN: '+(d.gone.length?d.gone.join(', '):'–')+'</span>';
+    dh = '<b>vs '+d.prev_week+'</b> - <span class="new">NEU: '+(d.new.length?d.new.join(', '):'-')+'</span> - <span class="gone">VERSCHWUNDEN: '+(d.gone.length?d.gone.join(', '):'-')+'</span>';
   } else { dh = 'Keine Vorwoche (Basislauf).'; }
   document.getElementById('delta').innerHTML = dh;
-
-  // Table
   const tb = document.querySelector('#bidTable tbody');
   tb.innerHTML = rows.map(function(r,i){
-    return '<tr><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+r.domain+
-      (r.is_ergo?'<span class="badge">ERGO</span>':'')+'</td>'+
-      '<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'+
-      '<td class="num">'+r.best_rank+'</td><td>'+r.persistence_wk+'</td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+r.domain+(r.is_ergo?'<span class="badge">ERGO</span>':'')+'</td><td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td><td class="num">'+r.best_rank+'</td><td>'+r.persistence_wk+'</td></tr>';
   }).join('');
 }
-
 function renderTrend(){
   const palette = ['#c8102e','#2563eb','#15803d','#d97706','#7c3aed'];
   const ds = DATA.clusters.map(function(c,i){
-    return {label:c,data:DATA.trend.byCluster[c],borderColor:palette[i%palette.length],
-            backgroundColor:'transparent',tension:.25};
+    return {label:c,data:DATA.trend.byCluster[c],borderColor:palette[i%palette.length],backgroundColor:'transparent',tension:.25};
   });
-  ds.push({label:'Gesamt',data:DATA.trend.total,borderColor:'#1c2330',
-           borderDash:[5,4],backgroundColor:'transparent',tension:.25});
+  ds.push({label:'Gesamt',data:DATA.trend.total,borderColor:'#1c2330',borderDash:[5,4],backgroundColor:'transparent',tension:.25});
   trendChart = new Chart(document.getElementById('trendChart'), {
     type:'line',
     data:{labels:DATA.trend.weeks,datasets:ds},
-    options:{plugins:{legend:{position:'bottom'}},
-      scales:{y:{beginAtZero:true,title:{display:true,text:'Domains'}}}}
+    options:{plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'Domains'}}}}
   });
 }
-
 function renderTM(){
   const tb = document.querySelector('#tmTable tbody');
   if(!DATA.trademark.length){ tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>'; return; }
@@ -266,7 +209,6 @@ function renderTM(){
     return '<tr><td>'+r.domain+'</td><td>'+r.cluster+'</td><td>'+r.keyword+'</td><td>'+r.headline+'</td></tr>';
   }).join('');
 }
-
 render(); renderTrend(); renderTM();
 </script>
 </body>
