@@ -21,9 +21,31 @@ ERGO_OWN = br.ERGO_OWN
 
 
 def build_data():
-    history = br.read_csv(HISTORY_FILE) if __import__("os").path.exists(HISTORY_FILE) else []
+    import os, datetime as _dt, re as _re
+    history = br.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
     if not history:
-        raise SystemExit(f"{HISTORY_FILE} fehlt oder ist leer.")
+        # Kein Datensatz vorhanden – erzeuge leeres Dashboard mit heutigem Datum
+        today = _dt.date.today().isoformat()
+        d = _dt.date.today()
+        iso_week = f"{d.isocalendar()[0]}-W{d.isocalendar()[1]:02d}"
+        import glob
+        csvs = sorted(glob.glob("ergo_brand_bidding_*.csv"))
+        run_date = today
+        if csvs:
+            m = _re.search(r"(\d{4}-\d{2}-\d{2})", csvs[-1])
+            run_date = m.group(1) if m else today
+        return {
+            "generated": today,
+            "current_week": iso_week,
+            "run_date": run_date,
+            "provider": os.getenv("SERP_PROVIDER", "serper"),
+            "kpis": {"ads": 0, "advertisers": 0, "trademark": 0},
+            "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"],
+            "scores": {},
+            "delta": {},
+            "trend": {"weeks": [iso_week], "total": [0], "byCluster": {}},
+            "trademark": [],
+        }
     weeks = sorted({r["iso_week"] for r in history})
     current_week = weeks[-1]
     week_rows = [r for r in history if r["iso_week"] == current_week]
