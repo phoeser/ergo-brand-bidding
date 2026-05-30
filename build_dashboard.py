@@ -169,10 +169,11 @@ function render(){
     b.classList.toggle('active', b.dataset.c === current);
   });
   document.getElementById('clName').textContent = '- ' + current;
-  const rows = (DATA.scores[current]||[]).slice(0,10);
-  const labels = rows.map(function(r){return r.domain;});
-  const vals = rows.map(function(r){return r.score;});
-  const colors = rows.map(function(r){return r.is_ergo ? '#9aa0a6' : '#c8102e';});
+  const rows = (DATA.scores[current]||[]).slice(0,20);
+  const barRows = rows.slice(0,12);
+  const labels = barRows.map(function(r){return r.domain;});
+  const vals = barRows.map(function(r){return r.score;});
+  const colors = barRows.map(function(r){return r.is_ergo ? '#9aa0a6' : '#c8102e';});
   if(barChart) barChart.destroy();
   barChart = new Chart(document.getElementById('barChart'), {
     type:'bar',

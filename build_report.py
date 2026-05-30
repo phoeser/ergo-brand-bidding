@@ -191,64 +191,7 @@ def md_table(headers, rows):
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
     if not week_rows:
-        # Ableiten von Datum/Woche aus Dateiname (ergo_brand_bidding_YYYY-MM-DD.csv)
-        import re
-        m = re.search(r"(\d{4}-\d{2}-\d{2})", week_csv)
-        run_date = m.group(1) if m else dt.date.today().isoformat()
-        d = dt.date.fromisoformat(run_date)
-        iso_week = f"{d.isocalendar()[0]}-W{d.isocalendar()[1]:02d}"
-        print(f"  INFO: {week_csv} enthaelt keine Anzeigen-Treffer – "
-              f"erzeuge 'Nulllauf'-Report fuer {iso_week}.")
-        provider = os.getenv("SERP_PROVIDER", "serper")
-        # Metadaten-Dummy-Zeile, damit die restliche Logik greift
-        week_rows = []
-        n_ads, n_adv, tm = 0, 0, []
-        clusters = list(ERGO_OWN)  # irrelevant, wird unten geprueft
-        history, n_added = append_history([])
-        # Vereinfachten Report schreiben
-        lines = []
-        lines.append(f"# ERGO Brand Bidding – {iso_week}")
-        lines.append("")
-        lines.append(f"*Lauf-Datum: {run_date} · Provider: {provider} · "
-                     f"Anzeigen-Treffer: 0 · Unique Advertiser: 0 · "
-                     f"Trademark-Pruefkandidaten: 0*")
-        lines.append("")
-        lines.append("**Keine bezahlten Anzeigen auf ERGO-Brand-Keywords erfasst.**")
-        lines.append("")
-        lines.append("Moegliche Ursachen: Serper liefert fuer die abgefragten Keywords "
-                     "gerade keine Ads-Blöcke (geringe Auktion-Aktivitaet, Tageszeit, "
-                     "Geolokation des API-Endpoints).")
-        lines.append("")
-        lines.append("## Veraenderungen ggue. Vorwoche")
-        lines.append("")
-        pw = prev_week(history, iso_week)
-        if pw:
-            prev_domains = {r["advertiser_domain"] for r in history
-                            if r["iso_week"] == pw and r["advertiser_domain"]}
-            gone = sorted(prev_domains)
-            lines.append(f"Verglichen mit {pw}: scheinbar VERSCHWUNDEN (koennte "
-                         f"Datenmangel sein): {', '.join(gone) if gone else '–'}")
-        else:
-            lines.append("Keine Vorwoche in der Historie.")
-        lines.append("")
-        lines.append("## Trademark-Pruefkandidaten")
-        lines.append("")
-        lines.append("*Keine Treffer mit Markenname im Anzeigentext.*")
-        lines.append("")
-        lines.append("---")
-        lines.append(f"*Automatisch erzeugt am {dt.date.today().isoformat()}. "
-                     f"Scoring: 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*")
-        out_path = f"ERGO_Brand_Bidding_{iso_week}.md"
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-        summary = (
-            f"ERGO Brand Bidding {iso_week}: 0 Anzeigen-Treffer, 0 Advertiser.\n"
-            f"0 neue Zeilen in der Historie.\n"
-            f"Keine Wettbewerber-Anzeigen erfasst.\n"
-            f"Trademark-Pruefkandidaten: 0 (Hinweis, keine rechtl. Bewertung).\n"
-            f"Report: {out_path}"
-        )
-        return out_path, summary
+        raise SystemExit(f"{week_csv} enthaelt keine Zeilen.")
     current_week = week_rows[0]["iso_week"]
     run_date = week_rows[0]["run_date"]
     provider = week_rows[0]["provider"]
@@ -273,10 +216,10 @@ def build_report(week_csv):
     for cl in clusters:
         scored = score_cluster(week_rows, history, cl, current_week)
         cluster_scores[cl] = scored
-        lines.append(f"## {cl} – Top-5 Bieter")
+        lines.append(f"## {cl} – Top-20 Bieter")
         lines.append("")
         if scored:
-            top = scored[:5]
+            top = scored[:20]
             rows = [[
                 i + 1,
                 s["domain"] + (" (ERGO)" if s["is_ergo"] else ""),

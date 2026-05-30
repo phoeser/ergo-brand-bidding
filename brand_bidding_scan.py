@@ -41,9 +41,14 @@ _load_local_env()
 # --- Konfiguration -------------------------------------------------------
 
 KEYWORD_CLUSTERS = {
-    "Marke allgemein": ["ergo", "ergo versicherung", "ergo login", "ergo kundenportal"],
-    "Zahnzusatz": ["ergo zahnzusatzversicherung", "ergo zahnzusatz", "zahnzusatzversicherung ergo"],
-    "Sterbegeld": ["ergo sterbegeld", "ergo sterbegeldversicherung", "sterbegeldversicherung ergo"],
+    "Marke allgemein": ["ergo", "ergo versicherung", "ergo login", "ergo kundenportal",
+                        "ergo direkt", "ergo krankenversicherung", "ergo rechtsschutz"],
+    "Zahnzusatz": ["ergo zahnzusatzversicherung", "ergo zahnzusatz", "zahnzusatzversicherung ergo",
+                   "zahnzusatzversicherung", "zahnzusatzversicherung vergleich", "zahnzusatzversicherung test",
+                   "beste zahnzusatzversicherung", "zahnzusatzversicherung ohne wartezeit"],
+    "Sterbegeld": ["ergo sterbegeld", "ergo sterbegeldversicherung", "sterbegeldversicherung ergo",
+                   "sterbegeldversicherung", "sterbegeldversicherung vergleich", "sterbegeldversicherung test",
+                   "beste sterbegeldversicherung"],
 }
 
 DEVICES = ["desktop", "mobile"]
