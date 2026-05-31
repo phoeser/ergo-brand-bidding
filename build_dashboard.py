@@ -15,25 +15,7 @@ ROUTINE_URL = "https://claude.ai/code/routines/trig_01AWBd3vmVJ3sLBC2USFVHGE"
 def build_data():
     history = br.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
     if not history:
-        now_utc = dt.datetime.now(dt.timezone.utc)
-        iso = now_utc.isocalendar()
-        current_week = f"{iso.year}-KW{iso.week:02d}"
-        return {
-            "generated": dt.date.today().isoformat(),
-            "current_week": current_week,
-            "run_date": dt.date.today().isoformat(),
-            "provider": os.getenv("SERP_PROVIDER", "serper"),
-            "routine_url": ROUTINE_URL,
-            "kpis": {"ads": 0, "advertisers": 0, "trademark": 0},
-            "clusters": [],
-            "scores": {},
-            "delta": {},
-            "trend_weeks": [current_week],
-            "total_trend": [0],
-            "by_cluster_trend": {},
-            "trademark": [],
-            "weeks": [current_week],
-        }
+        raise SystemExit(HISTORY_FILE + " fehlt oder ist leer.")
     weeks = sorted({r["iso_week"] for r in history})
     current_week = weeks[-1]
     week_rows = [r for r in history if r["iso_week"] == current_week]
@@ -127,6 +109,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .new{color:#15803d;} .gone{color:#b91c1c;}
   .note{color:var(--muted);font-size:12px;margin-top:8px;}
   canvas{max-height:300px;}
+  tr.bid{cursor:pointer;}
+  tr.bid:hover{background:#faf7f8;}
+  td.exp{width:18px;color:var(--muted);text-align:center;}
+  .addet{padding:2px 0 6px;}
+  .adrow{padding:8px 10px;border-left:3px solid var(--line);margin:6px 0;background:#fafbfc;border-radius:6px;}
+  .adkw{font-size:12px;color:var(--muted);margin-bottom:2px;}
+  .adh{font-weight:600;font-size:13px;}
+  .add{font-size:12px;color:#444;margin-top:2px;}
+  .adl{margin-top:4px;font-size:12px;}
+  .adl a{color:var(--accent);}
+  .ab{display:inline-block;background:#fde7ea;color:var(--accent);border-radius:6px;padding:0 6px;font-size:11px;margin-left:4px;}
   @media(max-width:640px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
@@ -147,9 +140,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
   <div class="card">
     <h2>Top-Bieter <span id="clName"></span></h2>
+    <div class="note">Zeile anklicken zum Aufklappen: Anzeigentexte &amp; Landingpages. &bdquo;Ueber ERGO&ldquo; = in wie vielen gemeinsamen Keywords der Bieter ueber der ERGO-Anzeige steht.</div>
     <table id="bidTable"><thead><tr>
-      <th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Praesenz</th>
-      <th class="num">Best-Rank</th><th>Persistenz</th>
+      <th></th><th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Praesenz</th>
+      <th class="num">Best-Rank</th><th>Ueber ERGO</th><th>Persistenz</th>
     </tr></thead><tbody></tbody></table>
   </div>
   <div class="card">
@@ -169,6 +163,25 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 const DATA = __DATA__;
 let current = DATA.clusters[0];
 let barChart, trendChart;
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmtAbove(r){
+  if(r.is_ergo) return '–';
+  if(r.common_n) return r.above_ergo_n+'/'+r.common_n+' ('+Math.round(r.above_ergo_pct)+'%)';
+  if(r.ergo_absent_n) return 'ERGO inaktiv';
+  return '–';
+}
+function adDetail(r){
+  if(!r.ads || !r.ads.length) return '<div class="addet">Keine Anzeigentexte erfasst.</div>';
+  return '<div class="addet">' + r.ads.map(function(a){
+    var er = (a.ergo_rank==null) ? 'ERGO nicht im Anzeigenblock' : ('ERGO Pos '+a.ergo_rank);
+    var above = a.above_ergo ? '<span class="ab">ueber ERGO</span>' : '';
+    var link = a.url ? '<div class="adl"><a href="'+escapeHtml(a.url)+'" target="_blank" rel="noopener">Landingpage ↗</a></div>' : '';
+    return '<div class="adrow"><div class="adkw">'+escapeHtml(a.keyword)+' · Pos '+a.rank+' ('+er+') '+above+'</div>'
+      + '<div class="adh">'+escapeHtml(a.headline||'(kein Titel)')+'</div>'
+      + (a.description?'<div class="add">'+escapeHtml(a.description)+'</div>':'')
+      + link + '</div>';
+  }).join('') + '</div>';
+}
 document.getElementById('sub').textContent = 'Stand: ' + DATA.current_week + ' - Lauf ' + DATA.run_date + ' - Provider ' + DATA.provider;
 document.getElementById('gen').textContent = DATA.generated;
 document.getElementById('runBtn').href = DATA.routine_url;
@@ -206,8 +219,21 @@ function render(){
   document.getElementById('delta').innerHTML = dh;
   const tb = document.querySelector('#bidTable tbody');
   tb.innerHTML = rows.map(function(r,i){
-    return '<tr><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+r.domain+(r.is_ergo?'<span class="badge">ERGO</span>':'')+'</td><td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td><td class="num">'+r.best_rank+'</td><td>'+r.persistence_wk+'</td></tr>';
+    var main = '<tr class="bid"><td class="exp">&#9656;</td><td>'+(i+1)+'</td>'
+      + '<td class="'+(r.is_ergo?'ergo':'')+'">'+escapeHtml(r.domain)+(r.is_ergo?'<span class="badge">ERGO</span>':'')+'</td>'
+      + '<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'
+      + '<td class="num">'+r.best_rank+'</td><td>'+fmtAbove(r)+'</td><td>'+r.persistence_wk+'</td></tr>';
+    var det = '<tr class="det" style="display:none"><td colspan="8">'+adDetail(r)+'</td></tr>';
+    return main+det;
   }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#bidTable tbody tr.bid'), function(tr){
+    tr.addEventListener('click', function(){
+      var d = tr.nextElementSibling;
+      var open = d.style.display==='none';
+      d.style.display = open?'table-row':'none';
+      tr.querySelector('.exp').innerHTML = open?'&#9662;':'&#9656;';
+    });
+  });
 }
 function renderTrend(){
   const palette = ['#c8102e','#2563eb','#15803d','#d97706','#7c3aed'];
@@ -225,7 +251,7 @@ function renderTM(){
   const tb = document.querySelector('#tmTable tbody');
   if(!DATA.trademark.length){ tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>'; return; }
   tb.innerHTML = DATA.trademark.map(function(r){
-    return '<tr><td>'+r.domain+'</td><td>'+r.cluster+'</td><td>'+r.keyword+'</td><td>'+r.headline+'</td></tr>';
+    return '<tr><td>'+escapeHtml(r.domain)+'</td><td>'+escapeHtml(r.cluster)+'</td><td>'+escapeHtml(r.keyword)+'</td><td>'+escapeHtml(r.headline)+'</td></tr>';
   }).join('');
 }
 render(); renderTrend(); renderTM();

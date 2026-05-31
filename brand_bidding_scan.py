@@ -121,9 +121,10 @@ def fetch_serper(keyword: str, device: str) -> list:
 # --- Provider: DataForSEO ------------------------------------------------
 
 def fetch_dataforseo(keyword: str, device: str) -> list:
-    """Google Ads Advertisers: WER schaltet Anzeigen auf das Keyword.
-    Liefert verlaesslich Advertiser/Domains (anders als der Organic-Endpunkt,
-    der keinen Paid-Block zurueckgibt)."""
+    """Google Organic SERP (Advanced) -> Paid-Block = die echten Textanzeigen.
+    Liefert pro Anzeige: Titel (Headline), Beschreibung, Landingpage-URL, Domain,
+    Werbetreibenden-Name und die Position im Anzeigenblock (1 = oberste Anzeige).
+    So koennen wir Anzeigentexte, Landingpages UND Position ggue. ERGO auswerten."""
     import base64 as _b64
     login = os.environ.get("DATAFORSEO_LOGIN", "").strip()
     password = os.environ.get("DATAFORSEO_PASSWORD", "").strip()
@@ -141,10 +142,15 @@ def fetch_dataforseo(keyword: str, device: str) -> list:
     else:
         auth = (login, password)
     resp = requests.post(
-        "https://api.dataforseo.com/v3/serp/google/ads_advertisers/live/advanced",
+        "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
         auth=auth,
         headers=headers,
-        json=[{"keyword": keyword, "location_code": LOCATION_CODE, "language_code": LANG}],
+        json=[{
+            "keyword": keyword,
+            "location_code": LOCATION_CODE,
+            "language_code": LANG,
+            "device": device,
+        }],
         timeout=60,
     )
     resp.raise_for_status()
@@ -154,24 +160,27 @@ def fetch_dataforseo(keyword: str, device: str) -> list:
     except (KeyError, IndexError, TypeError):
         items = []
     ads = []
-    rank = 0
+    seq = 0  # Position innerhalb des Paid-Blocks (1 = oberste Anzeige)
     for item in items:
-        name = (item.get("title") or "").strip()
+        if item.get("type") != "paid":
+            continue
+        seq += 1
         dom = (item.get("domain") or "").strip().lower()
         if dom.startswith("www."):
             dom = dom[4:]
-        if not name and not dom:
-            continue
-        rank += 1
-        advertiser_domain = dom or name.lower()
+        title = (item.get("title") or "").strip()
+        desc = (item.get("description") or "").strip()
+        url = (item.get("url") or "").strip()
+        if not dom:
+            dom = domain_of(url)
         ads.append({
-            "rank": item.get("rank_absolute", rank),
-            "block": item.get("rank_group", ""),
-            "advertiser_domain": advertiser_domain,
-            "advertiser_display": dom or name,
-            "headline": name or dom,
-            "description": "",
-            "url": ("https://" + dom) if dom else "",
+            "rank": seq,
+            "block": item.get("rank_absolute", ""),
+            "advertiser_domain": dom,
+            "advertiser_display": (item.get("website_name") or dom),
+            "headline": title,
+            "description": desc,
+            "url": url,
         })
     return ads
 

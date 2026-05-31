@@ -109,11 +109,25 @@ def prev_week(history, current_week):
     return weeks[-1] if weeks else None
 
 
+def ergo_rank_by_keyword(rows):
+    """Beste (kleinste) ERGO-Anzeigenposition je (keyword, device)."""
+    out = {}
+    for r in rows:
+        if r["advertiser_domain"] in ERGO_OWN:
+            k = (r["keyword"], r["device"])
+            rk = _to_int(r["rank"])
+            if k not in out or rk < out[k]:
+                out[k] = rk
+    return out
+
+
 def score_cluster(week_rows, history, cluster, current_week):
     rows = [r for r in week_rows if r["cluster"] == cluster]
     # Nenner: distinkte (keyword, device)-Kombis im Cluster diese Woche
     combos = {(r["keyword"], r["device"]) for r in rows}
     total_combos = len(combos) or 1
+
+    ergo_rk = ergo_rank_by_keyword(rows)
 
     persist_weeks = last_n_weeks(history, current_week, 4)
     n_persist = len(persist_weeks) or 1
@@ -137,6 +151,38 @@ def score_cluster(week_rows, history, cluster, current_week):
         position = sum(1.0 / max(1, rk) for rk in ranks) / len(ranks)
         persistence = len(weeks_present.get(dom, set())) / n_persist
         score = 100 * (W_PRESENCE * presence + W_POSITION * position + W_PERSIST * persistence)
+
+        # Beste Position der Domain je (keyword, device)
+        best_by_combo = {}
+        for r in drows:
+            k = (r["keyword"], r["device"])
+            rk = _to_int(r["rank"])
+            if k not in best_by_combo or rk < best_by_combo[k]:
+                best_by_combo[k] = rk
+        # Vergleich mit ERGO: nur Kombis, in denen BEIDE Anzeigen laufen
+        common = [k for k in best_by_combo if k in ergo_rk]
+        above = [k for k in common if best_by_combo[k] < ergo_rk[k]]
+        ergo_absent = [k for k in best_by_combo if k not in ergo_rk]
+        above_pct = round(100 * len(above) / len(common), 0) if common else None
+
+        # Anzeigendetails (Texte + Landingpages) je Treffer
+        ads = []
+        for r in drows:
+            k = (r["keyword"], r["device"])
+            er = ergo_rk.get(k)
+            rk = _to_int(r["rank"])
+            ads.append({
+                "keyword": r["keyword"],
+                "device": r.get("device", ""),
+                "rank": rk,
+                "ergo_rank": er,
+                "above_ergo": (er is not None and rk < er),
+                "headline": r.get("headline", "") or "",
+                "description": r.get("description", "") or "",
+                "url": r.get("url", "") or "",
+            })
+        ads.sort(key=lambda a: (a["rank"], a["keyword"]))
+
         scored.append({
             "domain": dom,
             "score": round(score, 1),
@@ -146,6 +192,11 @@ def score_cluster(week_rows, history, cluster, current_week):
             "persistence_wk": f"{len(weeks_present.get(dom, set()))}/{n_persist}",
             "hits": len(drows),
             "is_ergo": dom in ERGO_OWN,
+            "above_ergo_n": len(above),
+            "common_n": len(common),
+            "above_ergo_pct": above_pct,
+            "ergo_absent_n": len(ergo_absent),
+            "ads": ads,
         })
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored
@@ -188,70 +239,21 @@ def md_table(headers, rows):
     return "\n".join(out)
 
 
-def _build_nulllauf_report(week_csv):
-    today = dt.date.today()
-    now_utc = dt.datetime.now(dt.timezone.utc)
-    iso = now_utc.isocalendar()
-    current_week = f"{iso.year}-KW{iso.week:02d}"
-    run_date = today.isoformat()
-    provider = os.getenv("SERP_PROVIDER", "serper")
-
-    # Load history to determine prev-week delta context
-    history = read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
-    pw = prev_week(history, current_week)
-    clusters = ["Marke allgemein", "Zahnzusatz", "Sterbegeld"]
-
-    lines = [
-        f"# ERGO Brand Bidding – {current_week}",
-        "",
-        f"*Lauf-Datum: {run_date} · Provider: {provider} · "
-        f"Anzeigen-Treffer: 0 · Unique Advertiser: 0 · Trademark-Pruefkandidaten: 0*",
-        "",
-        "**Keine bezahlten Anzeigen auf ERGO-Brand-Keywords erfasst.**",
-        "",
-        "Moegliche Ursachen: Serper liefert fuer die abgefragten Keywords gerade "
-        "keine Ads-Blöcke (geringe Auktion-Aktivitaet, Tageszeit, Geolokation des API-Endpoints).",
-        "",
-        "## Veraenderungen ggue. Vorwoche",
-        "",
-    ]
-    if pw is None:
-        lines.append("Keine Vorwoche in der Historie.")
-    else:
-        for cl in clusters:
-            prev_doms = sorted({r["advertiser_domain"] for r in history
-                                if r["cluster"] == cl and r["iso_week"] == pw and r["advertiser_domain"]})
-            gone = ", ".join(prev_doms) if prev_doms else "–"
-            lines.append(f"- **{cl}** (vs {pw}): NEU: – · VERSCHWUNDEN: {gone}")
-    lines += [
-        "",
-        "## Trademark-Pruefkandidaten",
-        "",
-        "*Keine Treffer mit Markenname im Anzeigentext.*",
-        "",
-        "---",
-        f"*Automatisch erzeugt am {today.isoformat()}. "
-        f"Scoring: 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*",
-    ]
-
-    out_path = f"ERGO_Brand_Bidding_{current_week}.md"
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-    summary = (
-        f"ERGO Brand Bidding {current_week}: 0 Anzeigen-Treffer, 0 Advertiser.\n"
-        f"0 neue Zeilen in der Historie (Nulllauf).\n"
-        f"Keine Wettbewerber-Anzeigen erfasst.\n"
-        f"Trademark-Pruefkandidaten: 0 (Hinweis, keine rechtl. Bewertung).\n"
-        f"Report: {out_path}"
-    )
-    return out_path, summary
+def _fmt_above(s):
+    """Kurzform der Ueber-ERGO-Kennzahl fuer Tabellen."""
+    if s.get("is_ergo"):
+        return "–"
+    if s.get("common_n"):
+        return f"{s['above_ergo_n']}/{s['common_n']} ({int(s['above_ergo_pct'])}%)"
+    if s.get("ergo_absent_n"):
+        return "ERGO nicht aktiv"
+    return "–"
 
 
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
     if not week_rows:
-        return _build_nulllauf_report(week_csv)
+        raise SystemExit(f"{week_csv} enthaelt keine Zeilen.")
     current_week = week_rows[0]["iso_week"]
     run_date = week_rows[0]["run_date"]
     provider = week_rows[0]["provider"]
@@ -284,13 +286,35 @@ def build_report(week_csv):
                 i + 1,
                 s["domain"] + (" (ERGO)" if s["is_ergo"] else ""),
                 s["score"], f'{int(s["presence_pct"])}%',
-                s["best_rank"], s["persistence_wk"],
+                s["best_rank"], _fmt_above(s), s["persistence_wk"],
             ] for i, s in enumerate(top)]
             lines.append(md_table(
-                ["#", "Domain", "Score", "Praesenz", "Best-Rank", "Persistenz"], rows))
+                ["#", "Domain", "Score", "Praesenz", "Best-Rank",
+                 "Ueber ERGO", "Persistenz"], rows))
         else:
             lines.append("*Keine Anzeigen erfasst.*")
         lines.append("")
+
+        # Anzeigentexte + Landingpages der staerksten Wettbewerber (Top-5)
+        detail = [s for s in scored if not s["is_ergo"]][:5]
+        if detail:
+            lines.append(f"### {cl} – Anzeigentexte & Landingpages (Top-5 Wettbewerber)")
+            lines.append("")
+            for s in detail:
+                lines.append(f"**{s['domain']}** — Score {s['score']}, "
+                             f"Ueber ERGO: {_fmt_above(s)}")
+                for a in s["ads"][:6]:
+                    er = a["ergo_rank"]
+                    pos = (f"Pos {a['rank']} vs ERGO {er}" if er is not None
+                           else f"Pos {a['rank']} (ERGO nicht im Anzeigenblock)")
+                    head = (a["headline"] or "(kein Titel)")[:90]
+                    desc = (a["description"] or "")[:140]
+                    lines.append(f"- *{a['keyword']}* — {pos} — „{head}“")
+                    if desc:
+                        lines.append(f"  {desc}")
+                    if a["url"]:
+                        lines.append(f"  Landingpage: {a['url']}")
+                lines.append("")
 
     # (b) Neue / verschwundene Bieter
     lines.append("## Veraenderungen ggue. Vorwoche")
