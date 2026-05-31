@@ -121,11 +121,31 @@ def fetch_serper(keyword: str, device: str) -> list:
 # --- Provider: DataForSEO ------------------------------------------------
 
 def fetch_dataforseo(keyword: str, device: str) -> list:
-    login = os.environ["DATAFORSEO_LOGIN"]
-    password = os.environ["DATAFORSEO_PASSWORD"]
+    # Auth: bevorzugt DATAFORSEO_B64 (fertiger "login:password" Base64-Token,
+    # 1-Klick aus dem DataForSEO-Dashboard) - sonst Login+Passwort getrennt.
+    import base64 as _b64
+    login = os.environ.get("DATAFORSEO_LOGIN", "").strip()
+    password = os.environ.get("DATAFORSEO_PASSWORD", "").strip()
+    b64 = os.environ.get("DATAFORSEO_B64", "").strip()
+    # Falls kein expliziter Token gesetzt ist, aber DATAFORSEO_PASSWORD selbst
+    # ein base64-kodiertes "login:password" ist, dieses als Token verwenden.
+    if not b64 and password:
+        try:
+            dec = _b64.b64decode(password, validate=True).decode("utf-8", "ignore")
+            if ":" in dec:
+                b64 = password
+        except Exception:
+            pass
+    headers = {"Content-Type": "application/json"}
+    auth = None
+    if b64:
+        headers["Authorization"] = "Basic " + b64
+    else:
+        auth = (login, password)
     resp = requests.post(
         "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
-        auth=(login, password),
+        auth=auth,
+        headers=headers,
         json=[{
             "keyword": keyword,
             "location_code": LOCATION_CODE,
