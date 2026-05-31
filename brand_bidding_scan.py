@@ -121,18 +121,16 @@ def fetch_serper(keyword: str, device: str) -> list:
 # --- Provider: DataForSEO ------------------------------------------------
 
 def fetch_dataforseo(keyword: str, device: str) -> list:
-    # Auth: bevorzugt DATAFORSEO_B64 (fertiger "login:password" Base64-Token,
-    # 1-Klick aus dem DataForSEO-Dashboard) - sonst Login+Passwort getrennt.
+    """Google Ads Advertisers: WER schaltet Anzeigen auf das Keyword.
+    Liefert verlaesslich Advertiser/Domains (anders als der Organic-Endpunkt,
+    der keinen Paid-Block zurueckgibt)."""
     import base64 as _b64
     login = os.environ.get("DATAFORSEO_LOGIN", "").strip()
     password = os.environ.get("DATAFORSEO_PASSWORD", "").strip()
     b64 = os.environ.get("DATAFORSEO_B64", "").strip()
-    # Falls kein expliziter Token gesetzt ist, aber DATAFORSEO_PASSWORD selbst
-    # ein base64-kodiertes "login:password" ist, dieses als Token verwenden.
     if not b64 and password:
         try:
-            dec = _b64.b64decode(password, validate=True).decode("utf-8", "ignore")
-            if ":" in dec:
+            if ":" in _b64.b64decode(password, validate=True).decode("utf-8", "ignore"):
                 b64 = password
         except Exception:
             pass
@@ -143,16 +141,10 @@ def fetch_dataforseo(keyword: str, device: str) -> list:
     else:
         auth = (login, password)
     resp = requests.post(
-        "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+        "https://api.dataforseo.com/v3/serp/google/ads_advertisers/live/advanced",
         auth=auth,
         headers=headers,
-        json=[{
-            "keyword": keyword,
-            "location_code": LOCATION_CODE,
-            "language_code": LANG,
-            "device": device,
-            "os": "windows" if device == "desktop" else "android",
-        }],
+        json=[{"keyword": keyword, "location_code": LOCATION_CODE, "language_code": LANG}],
         timeout=60,
     )
     resp.raise_for_status()
@@ -164,21 +156,22 @@ def fetch_dataforseo(keyword: str, device: str) -> list:
     ads = []
     rank = 0
     for item in items:
-        if item.get("type") != "paid":
+        name = (item.get("title") or "").strip()
+        dom = (item.get("domain") or "").strip().lower()
+        if dom.startswith("www."):
+            dom = dom[4:]
+        if not name and not dom:
             continue
         rank += 1
-        title = item.get("title", "")
-        desc = item.get("description", "") or ""
-        url = item.get("url", "") or ""
-        disp = item.get("breadcrumb", "") or item.get("domain", "") or ""
+        advertiser_domain = dom or name.lower()
         ads.append({
             "rank": item.get("rank_absolute", rank),
             "block": item.get("rank_group", ""),
-            "advertiser_domain": (item.get("domain") or domain_of(url or disp)).lower(),
-            "advertiser_display": disp,
-            "headline": title,
-            "description": desc,
-            "url": url,
+            "advertiser_domain": advertiser_domain,
+            "advertiser_display": dom or name,
+            "headline": name or dom,
+            "description": "",
+            "url": ("https://" + dom) if dom else "",
         })
     return ads
 
@@ -202,7 +195,7 @@ def run() -> list:
     rows = []
     for cluster, keywords in KEYWORD_CLUSTERS.items():
         for kw in keywords:
-            for device in DEVICES:
+            for device in (["desktop"] if PROVIDER == "dataforseo" else DEVICES):
                 try:
                     ads = fetch(kw, device)
                 except Exception as e:
