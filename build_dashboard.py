@@ -15,7 +15,25 @@ ROUTINE_URL = "https://claude.ai/code/routines/trig_01AWBd3vmVJ3sLBC2USFVHGE"
 def build_data():
     history = br.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
     if not history:
-        raise SystemExit(HISTORY_FILE + " fehlt oder ist leer.")
+        now_utc = dt.datetime.now(dt.timezone.utc)
+        iso = now_utc.isocalendar()
+        current_week = f"{iso.year}-KW{iso.week:02d}"
+        return {
+            "generated": dt.date.today().isoformat(),
+            "current_week": current_week,
+            "run_date": dt.date.today().isoformat(),
+            "provider": os.getenv("SERP_PROVIDER", "serper"),
+            "routine_url": ROUTINE_URL,
+            "kpis": {"ads": 0, "advertisers": 0, "trademark": 0},
+            "clusters": [],
+            "scores": {},
+            "delta": {},
+            "trend_weeks": [current_week],
+            "total_trend": [0],
+            "by_cluster_trend": {},
+            "trademark": [],
+            "weeks": [current_week],
+        }
     weeks = sorted({r["iso_week"] for r in history})
     current_week = weeks[-1]
     week_rows = [r for r in history if r["iso_week"] == current_week]
