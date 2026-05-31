@@ -1,6 +1,6 @@
 # ERGO Brand Bidding – 2026-KW22
 
-*Lauf-Datum: 2026-05-31 · Provider: dataforseo · Anzeigen-Treffer: 0 · Unique Advertiser: 0 · Trademark-Pruefkandidaten: 0*
+*Lauf-Datum: 2026-05-31 · Provider: serper · Anzeigen-Treffer: 0 · Unique Advertiser: 0 · Trademark-Pruefkandidaten: 0*
 
 **Keine bezahlten Anzeigen auf ERGO-Brand-Keywords erfasst.**
 
