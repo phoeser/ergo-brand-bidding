@@ -26,9 +26,9 @@
   .kpi .n{font-size:26px;font-weight:700;}
   .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
-  .card h2{font-size:15px;margin:0 0 12px;}
+  .card h2{font-size:15px;margin:0 0 4px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
   .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--ink);}
   .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -40,7 +40,8 @@
   .vbadge{display:inline-block;background:#e7f0fd;color:#2563eb;border-radius:6px;padding:1px 6px;font-size:10px;margin-left:6px;}
   .delta{font-size:13px;color:var(--muted);margin-top:6px;}
   .new{color:#15803d;} .gone{color:#b91c1c;}
-  .note{color:var(--muted);font-size:12px;margin-top:8px;}
+  .note{color:var(--muted);font-size:12px;margin:2px 0 8px;}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px;}
   canvas{max-height:300px;}
   tr.bid{cursor:pointer;}
   tr.bid:hover{background:#faf7f8;}
@@ -69,158 +70,172 @@
   </div>
   <div class="kpis" id="kpis"></div>
 
-  <div class="card">
-    <h2>Intensitaet je Cluster (letzter Lauf)</h2>
-    <div class="tabs" id="tabs"></div>
-    <canvas id="barChart"></canvas>
-    <div class="delta" id="delta"></div>
-  </div>
+  <div class="tabs" id="tabs"></div>
 
   <div class="card">
-    <h2>Top-Bieter <span id="clName"></span></h2>
-    <div class="note">Zeile anklicken: Live-Anzeigentexte, Landingpages &amp; Kreativ-Infos. &bdquo;Ueber ERGO&ldquo; = Anteil gemeinsamer Keywords, in denen der Bieter ueber ERGO rankt. &bdquo;~Ads&ldquo; = ungefaehre Zahl laufender Anzeigen (Transparency).</div>
+    <h2>Live-Bieter <span id="clName"></span> &mdash; echtes Brand-Bidding</h2>
+    <div class="note">Wer taucht bei der Google-Suche wirklich als Anzeige auf. Zeile anklicken: Anzeigentext, Landingpage &amp; Position. &bdquo;Ueber ERGO&ldquo; = Anteil gemeinsamer Keywords, in denen der Bieter ueber der ERGO-Anzeige steht.</div>
+    <canvas id="barChart"></canvas>
+    <div class="delta" id="delta"></div>
     <table id="bidTable"><thead><tr>
-      <th></th><th>#</th><th>Bieter</th><th class="num">Score</th><th class="num">Praesenz</th>
-      <th class="num">Best-Rang</th><th>Ueber ERGO</th><th class="num">~Ads</th><th>Persistenz</th>
+      <th></th><th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Praesenz</th>
+      <th class="num">Best-Pos</th><th>Ueber ERGO</th><th>Persistenz</th>
     </tr></thead><tbody></tbody></table>
+    <div class="note" id="liveEmpty"></div>
   </div>
 
   <h2 style="font-size:16px;margin:24px 0 10px">Zeitreihen ueber die Laeufe</h2>
   <div class="grid2">
-    <div class="card"><h2>Bieterdichte je Cluster</h2><canvas id="tsDensity"></canvas></div>
-    <div class="card"><h2>ERGO-Sichtbarkeit</h2><canvas id="tsErgo"></canvas></div>
-    <div class="card"><h2>Top-Wettbewerber-Intensitaet</h2><canvas id="tsBidder"></canvas></div>
-    <div class="card"><h2>Trademark-Treffer</h2><canvas id="tsTm"></canvas></div>
+    <div class="card"><h2>Live-Bieterdichte je Cluster</h2><canvas id="tsDensity"></canvas></div>
+    <div class="card"><h2>ERGO-Sichtbarkeit (live)</h2><canvas id="tsErgo"></canvas></div>
+    <div class="card"><h2>Top-Live-Bieter-Intensitaet</h2><canvas id="tsBidder"></canvas></div>
+    <div class="card"><h2>Trademark-Treffer (live)</h2><canvas id="tsTm"></canvas></div>
   </div>
 
   <div class="card">
-    <h2>Trademark-Pruefkandidaten (letzter Lauf)</h2>
+    <h2>Markenraum / Namensvettern <span id="clName2"></span></h2>
+    <div class="warn">Werbetreibende mit passendem <b>Namen</b> aus dem Google-Ads-Transparency-Center. Das ist <b>kein</b> Nachweis von Brand-Bidding auf ERGO-Suchbegriffe &mdash; nur ein Marken-/Namensraum-Ueberblick. Zeile anklicken fuer Kreativ-Infos.</div>
+    <table id="nsTable"><thead><tr>
+      <th></th><th>Werbetreibender</th><th class="num">~Ads</th><th>verifiziert</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="note" id="nsEmpty"></div>
+  </div>
+
+  <div class="card">
+    <h2>Trademark-Pruefkandidaten (Live-Anzeigen)</h2>
     <div class="note">Hinweis zur menschlichen/juristischen Pruefung - keine rechtliche Bewertung.</div>
     <table id="tmTable"><thead><tr>
-      <th>Bieter</th><th>Cluster</th><th>Keyword</th><th>Anzeigentitel</th>
+      <th>Domain</th><th>Cluster</th><th>Keyword</th><th>Anzeigentitel</th>
     </tr></thead><tbody></tbody></table>
   </div>
-  <div class="note">Automatisch erzeugt am <span id="gen"></span> - Quellen: Ads Advertisers (Abdeckung) + Live-SERP (Texte/Landingpages/Position) + ads_search (Kreative). Scoring: 0,5 Praesenz + 0,3 Position + 0,2 Persistenz (x100).</div>
+  <div class="note">Automatisch erzeugt am <span id="gen"></span> - Hauptsignal: Live-Suche (Paid-Block). Zusatz: Ad-Transparency-Namensraum. Scoring: 0,5 Praesenz + 0,3 Position + 0,2 Persistenz (x100).</div>
 </div>
 <script>
-const DATA = {"generated": "2026-06-01", "current_week": "2026-KW23", "run_date": "2026-06-01", "current_run": "2026-06-01T07:52:01+00:00", "provider": "dataforseo", "routine_url": "https://claude.ai/code/routines/trig_01AWBd3vmVJ3sLBC2USFVHGE", "kpis": {"bidders": 39, "live_ads": 2, "trademark": 0}, "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"], "scores": {"Marke allgemein": [{"key": "b:ergo-versicherung-deutsche-krankenversicherung-magdalena-pöhler", "domain": "", "name": "ERGO Versicherung / Deutsche Krankenversicherung Magdalena Pöhler", "advertiser_id": "AR03751987918302871553", "score": 67.5, "presence_pct": 50.0, "best_rank": 1, "avg_rank": 1.5, "approx_ads": 5, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 2, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergoneers", "domain": "", "name": "Ergoneers", "advertiser_id": "AR02869503075347857409", "score": 62.5, "presence_pct": 25.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 17, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": {"n": 1, "formats": "text", "first_shown": "2026-03-23 11:00:00 +00:00", "last_shown": "2026-05-31 13:10:19 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/1581524662643698154", "transparency": "https://adstransparency.google.com/advertiser/AR02869503075347857409/creative/CR15441761898596401153?region=DE"}}, {"key": "ergo.de", "domain": "ergo.de", "name": "ergo.de", "advertiser_id": "", "score": 62.5, "presence_pct": 25.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-versicherung-aktiengesellschaft", "domain": "", "name": "ERGO Versicherung Aktiengesellschaft", "advertiser_id": "AR02206630639065628673", "score": 62.5, "presence_pct": 25.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 13, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": {"n": 1, "formats": "text", "first_shown": "2022-07-25 11:30:14 +00:00", "last_shown": "2026-05-31 07:17:28 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/5791646031200023271", "transparency": "https://adstransparency.google.com/advertiser/AR02206630639065628673/creative/CR14084258036390559745?region=DE"}}, {"key": "b:ergo-direkt-ag", "domain": "", "name": "ERGO Direkt AG", "advertiser_id": "AR06075478217991389185", "score": 62.5, "presence_pct": 25.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 2006, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": {"n": 110, "formats": "image,text,video", "first_shown": "2021-10-25 07:00:00 +00:00", "last_shown": "2026-06-01 07:29:09 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/4629266722582731945", "transparency": "https://adstransparency.google.com/advertiser/AR06075478217991389185/creative/CR18182168118271410177?region=DE"}}, {"key": "b:ergo-flex", "domain": "", "name": "Ergo Flex", "advertiser_id": "AR07542315789886423041", "score": 47.5, "presence_pct": 25.0, "best_rank": 2, "avg_rank": 2.0, "approx_ads": 7, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "ergo.lv", "domain": "ergo.lv", "name": "ergo.lv", "advertiser_id": "", "score": 47.5, "presence_pct": 25.0, "best_rank": 2, "avg_rank": 2.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergonline", "domain": "", "name": "Ergonline", "advertiser_id": "AR18113734746486865921", "score": 42.5, "presence_pct": 25.0, "best_rank": 3, "avg_rank": 3.0, "approx_ads": 7, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "ergo.ee", "domain": "ergo.ee", "name": "ergo.ee", "advertiser_id": "", "score": 42.5, "presence_pct": 25.0, "best_rank": 3, "avg_rank": 3.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-versicherung", "domain": "", "name": "Ergo Versicherung", "advertiser_id": "AR14850487606520578049", "score": 42.5, "presence_pct": 25.0, "best_rank": 3, "avg_rank": 3.0, "approx_ads": 3, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-lab", "domain": "", "name": "Ergo-Lab", "advertiser_id": "AR11129800714086252545", "score": 40.0, "presence_pct": 25.0, "best_rank": 4, "avg_rank": 4.0, "approx_ads": 5, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": {"n": 1, "formats": "text", "first_shown": "2022-04-05 23:33:37 +00:00", "last_shown": "2026-05-29 14:25:11 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/6978591038471253993", "transparency": "https://adstransparency.google.com/advertiser/AR11129800714086252545/creative/CR07611085328761225217?region=DE"}}, {"key": "ergo.lt", "domain": "ergo.lt", "name": "ergo.lt", "advertiser_id": "", "score": 40.0, "presence_pct": 25.0, "best_rank": 4, "avg_rank": 4.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-versicherungsbüro", "domain": "", "name": "Ergo Versicherungsbüro", "advertiser_id": "AR13113926320364978177", "score": 40.0, "presence_pct": 25.0, "best_rank": 4, "avg_rank": 4.0, "approx_ads": 1, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergoithub", "domain": "", "name": "Ergoithub", "advertiser_id": "AR00163644077953253377", "score": 38.5, "presence_pct": 25.0, "best_rank": 5, "avg_rank": 5.0, "approx_ads": 3, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "pergo.no", "domain": "pergo.no", "name": "pergo.no", "advertiser_id": "", "score": 38.5, "presence_pct": 25.0, "best_rank": 5, "avg_rank": 5.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-versicherung-amerkamp", "domain": "", "name": "ERGO Versicherung Amerkamp", "advertiser_id": "AR09738243284551073793", "score": 38.5, "presence_pct": 25.0, "best_rank": 5, "avg_rank": 5.0, "approx_ads": 1, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergostock", "domain": "", "name": "Ergostock", "advertiser_id": "AR05825690462018600961", "score": 37.5, "presence_pct": 25.0, "best_rank": 6, "avg_rank": 6.0, "approx_ads": 3, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "ergo.com", "domain": "ergo.com", "name": "ergo.com", "advertiser_id": "", "score": 37.5, "presence_pct": 25.0, "best_rank": 6, "avg_rank": 6.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergo-versicherung-thomas-kildau", "domain": "", "name": "ERGO Versicherung Thomas Kildau", "advertiser_id": "AR00536534744909742081", "score": 37.5, "presence_pct": 25.0, "best_rank": 6, "avg_rank": 6.0, "approx_ads": 1, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergomatic", "domain": "", "name": "ERGOMATIC", "advertiser_id": "AR00188798172397568001", "score": 36.8, "presence_pct": 25.0, "best_rank": 7, "avg_rank": 7.0, "approx_ads": 3, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "pergo.dk", "domain": "pergo.dk", "name": "pergo.dk", "advertiser_id": "", "score": 36.8, "presence_pct": 25.0, "best_rank": 7, "avg_rank": 7.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergohome", "domain": "", "name": "Ergohome", "advertiser_id": "AR18067837729529397249", "score": 36.3, "presence_pct": 25.0, "best_rank": 8, "avg_rank": 8.0, "approx_ads": 2, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "bergo.pl", "domain": "bergo.pl", "name": "bergo.pl", "advertiser_id": "", "score": 36.3, "presence_pct": 25.0, "best_rank": 8, "avg_rank": 8.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergodyne", "domain": "", "name": "Ergodyne", "advertiser_id": "AR10897146957046743041", "score": 35.8, "presence_pct": 25.0, "best_rank": 9, "avg_rank": 9.0, "approx_ads": 1, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "ergoni.de", "domain": "ergoni.de", "name": "ergoni.de", "advertiser_id": "", "score": 35.8, "presence_pct": 25.0, "best_rank": 9, "avg_rank": 9.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "b:ergono3d", "domain": "", "name": "ERGONO3D", "advertiser_id": "AR12978545652660174849", "score": 35.5, "presence_pct": 25.0, "best_rank": 10, "avg_rank": 10.0, "approx_ads": 1, "verified": true, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}, {"key": "x-ergo.de", "domain": "x-ergo.de", "name": "x-ergo.de", "advertiser_id": "", "score": 35.5, "presence_pct": 25.0, "best_rank": 10, "avg_rank": 10.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": true, "above_ergo_n": 0, "common_n": 1, "above_ergo_pct": 0.0, "live_ads": [], "creatives": null}], "Zahnzusatz": [{"key": "zahnzusatzversicherung.care", "domain": "zahnzusatzversicherung.care", "name": "zahnzusatzversicherung.care", "advertiser_id": "", "score": 100.0, "presence_pct": 100.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "test-zahnzusatzversicherung.de", "domain": "test-zahnzusatzversicherung.de", "name": "test-zahnzusatzversicherung.de", "advertiser_id": "", "score": 85.0, "presence_pct": 100.0, "best_rank": 2, "avg_rank": 2.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherung-direkt.de", "domain": "zahnzusatzversicherung-direkt.de", "name": "zahnzusatzversicherung-direkt.de", "advertiser_id": "", "score": 80.0, "presence_pct": 100.0, "best_rank": 3, "avg_rank": 3.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "heynen-zahnzusatzversicherung.de", "domain": "heynen-zahnzusatzversicherung.de", "name": "heynen-zahnzusatzversicherung.de", "advertiser_id": "", "score": 77.5, "presence_pct": 100.0, "best_rank": 4, "avg_rank": 4.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherung-kinder.ch", "domain": "zahnzusatzversicherung-kinder.ch", "name": "zahnzusatzversicherung-kinder.ch", "advertiser_id": "", "score": 76.0, "presence_pct": 100.0, "best_rank": 5, "avg_rank": 5.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherung-experten.de", "domain": "zahnzusatzversicherung-experten.de", "name": "zahnzusatzversicherung-experten.de", "advertiser_id": "", "score": 75.0, "presence_pct": 100.0, "best_rank": 6, "avg_rank": 6.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherungen-portal.de", "domain": "zahnzusatzversicherungen-portal.de", "name": "zahnzusatzversicherungen-portal.de", "advertiser_id": "", "score": 74.3, "presence_pct": 100.0, "best_rank": 7, "avg_rank": 7.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherung-vergleich.net", "domain": "zahnzusatzversicherung-vergleich.net", "name": "zahnzusatzversicherung-vergleich.net", "advertiser_id": "", "score": 73.8, "presence_pct": 100.0, "best_rank": 8, "avg_rank": 8.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "zahnzusatzversicherungen-vergleich.com", "domain": "zahnzusatzversicherungen-vergleich.com", "name": "zahnzusatzversicherungen-vergleich.com", "advertiser_id": "", "score": 73.3, "presence_pct": 100.0, "best_rank": 9, "avg_rank": 9.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}], "Sterbegeld": [{"key": "b:vorsorgekasse-hoesch-dortmund-sterbegeldversicherung-vvag", "domain": "", "name": "Vorsorgekasse Hoesch Dortmund Sterbegeldversicherung VVaG", "advertiser_id": "AR14204174897684414465", "score": 100.0, "presence_pct": 100.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 69, "verified": true, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": {"n": 6, "formats": "text", "first_shown": "2025-08-05 09:09:42 +00:00", "last_shown": "2026-05-31 19:46:04 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/15883991652121427067", "transparency": "https://adstransparency.google.com/advertiser/AR14204174897684414465/creative/CR11630494987703025665?region=DE"}}, {"key": "sterbegeldversicherung-2022.com", "domain": "sterbegeldversicherung-2022.com", "name": "sterbegeldversicherung-2022.com", "advertiser_id": "", "score": 100.0, "presence_pct": 100.0, "best_rank": 1, "avg_rank": 1.0, "approx_ads": 0, "verified": false, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": null}, {"key": "b:solidar-versicherungsgemeinschaft-sterbegeldversicherung-vvag", "domain": "", "name": "Solidar Versicherungsgemeinschaft Sterbegeldversicherung VVaG", "advertiser_id": "AR17593206734803959809", "score": 85.0, "presence_pct": 100.0, "best_rank": 2, "avg_rank": 2.0, "approx_ads": 48, "verified": true, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "live_ads": [], "creatives": {"n": 1, "formats": "text", "first_shown": "2025-06-04 00:14:06 +00:00", "last_shown": "2026-06-01 05:32:42 +00:00", "preview": "", "transparency": "https://adstransparency.google.com/advertiser/AR17593206734803959809/creative/CR17967848812114345985?region=DE"}}]}, "delta": {"Marke allgemein": {"prev_run": null, "new": ["b:ergo-direkt-ag", "b:ergo-flex", "b:ergo-lab", "b:ergo-versicherung", "b:ergo-versicherung-aktiengesellschaft", "b:ergo-versicherung-amerkamp", "b:ergo-versicherung-deutsche-krankenversicherung-magdalena-pöhler", "b:ergo-versicherung-thomas-kildau", "b:ergo-versicherungsbüro", "b:ergodyne", "b:ergohome", "b:ergoithub", "b:ergomatic", "b:ergoneers", "b:ergonline", "b:ergono3d", "b:ergostock", "bergo.pl", "ergo.com", "ergo.de", "ergo.ee", "ergo.lt", "ergo.lv", "ergoni.de", "pergo.dk", "pergo.no", "x-ergo.de"], "gone": []}, "Zahnzusatz": {"prev_run": null, "new": ["heynen-zahnzusatzversicherung.de", "test-zahnzusatzversicherung.de", "zahnzusatzversicherung-direkt.de", "zahnzusatzversicherung-experten.de", "zahnzusatzversicherung-kinder.ch", "zahnzusatzversicherung-vergleich.net", "zahnzusatzversicherung.care", "zahnzusatzversicherungen-portal.de", "zahnzusatzversicherungen-vergleich.com"], "gone": []}, "Sterbegeld": {"prev_run": null, "new": ["b:solidar-versicherungsgemeinschaft-sterbegeldversicherung-vvag", "b:vorsorgekasse-hoesch-dortmund-sterbegeldversicherung-vvag", "sterbegeldversicherung-2022.com"], "gone": []}}, "trademark": [], "ts": {"runs": ["2026-06-01T07:52:01+00:00"], "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"], "density": {"Marke allgemein": [3], "Zahnzusatz": [9], "Sterbegeld": [3]}, "ergo_presence": [67.0], "ergo_avg_rank": [4.5], "trademark": [0], "bidder_intensity": {"zahnzusatzversicherung.care": [50.0], "b:vorsorgekasse-hoesch-dortmund-sterbegeldversicherung-vvag": [50.0], "sterbegeldversicherung-2022.com": [50.0], "test-zahnzusatzversicherung.de": [30.0], "b:solidar-versicherungsgemeinschaft-sterbegeldversicherung-vvag": [30.0], "zahnzusatzversicherung-direkt.de": [23.3]}, "bidder_names": {"zahnzusatzversicherung.care": "zahnzusatzversicherung.care", "b:vorsorgekasse-hoesch-dortmund-sterbegeldversicherung-vvag": "Vorsorgekasse Hoesch Dortmund Sterbegeldversicherung VVaG", "sterbegeldversicherung-2022.com": "sterbegeldversicherung-2022.com", "test-zahnzusatzversicherung.de": "test-zahnzusatzversicherung.de", "b:solidar-versicherungsgemeinschaft-sterbegeldversicherung-vvag": "Solidar Versicherungsgemeinschaft Sterbegeldversicherung VVaG", "zahnzusatzversicherung-direkt.de": "zahnzusatzversicherung-direkt.de"}}};
+const DATA = {"generated": "2026-06-01", "current_week": "2026-KW23", "run_date": "2026-06-01", "current_run": "2026-06-01T07:52:01+00:00", "provider": "dataforseo", "routine_url": "https://claude.ai/code/routines/trig_01AWBd3vmVJ3sLBC2USFVHGE", "kpis": {"live_comp": 2, "live_ads": 2, "trademark": 0}, "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"], "scores": {"Marke allgemein": [], "Zahnzusatz": [{"domain": "muenchener-verein.de", "name": "Münchener Verein", "score": 100.0, "presence_pct": 100.0, "best_rank": 1, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "ads": [{"keyword": "zahnzusatzversicherung ohne wartezeit", "rank": 1, "ergo_rank": null, "above_ergo": false, "headline": "Beste Zahnzusatzversicherung | Ohne Wartezeit | Jetzt mehr erfahren", "description": "Zahnzusatzversicherung ohne Wartezeit - Implantate, Kronen, Brücken, Zahnreinigung, uvm. 100% Kostenerstattung, 100% Zufriedenheit, 100...", "url": "https://www.muenchener-verein.de/privatkunden/gesundheit/zahnzusatzversicherung/"}]}], "Sterbegeld": [{"domain": "check24.de", "name": "CHECK24", "score": 100.0, "presence_pct": 100.0, "best_rank": 1, "persistence_wk": "1/1", "is_ergo": false, "above_ergo_n": 0, "common_n": 0, "above_ergo_pct": null, "ads": [{"keyword": "sterbegeldversicherung test", "rank": 1, "ergo_rank": null, "above_ergo": false, "headline": "Sterbegeldversicherung im Test - Stiftung Warentest Testsieger", "description": "CHECK24: Über 60 Tarife der besten Anbieter vergleichen und bereits ab 2,79€/M vorsorgen.", "url": "https://www.check24.de/sterbegeldversicherung/lp/vergleichen/bis-zu-50-prozent-sparen/"}]}]}, "namespace": {"Marke allgemein": [{"key": "b:ergoneers", "name": "Ergoneers", "domain": "", "approx_ads": 17, "verified": true, "advertiser_id": "AR02869503075347857409", "is_ergo": false, "keywords": ["ergo"], "creatives": {"n": 1, "formats": "text", "first_shown": "2026-03-23 11:00:00 +00:00", "last_shown": "2026-05-31 13:10:19 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/1581524662643698154", "transparency": "https://adstransparency.google.com/advertiser/AR02869503075347857409/creative/CR15441761898596401153?region=DE"}}, {"key": "b:ergo-flex", "name": "Ergo Flex", "domain": "", "approx_ads": 7, "verified": true, "advertiser_id": "AR07542315789886423041", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergonline", "name": "Ergonline", "domain": "", "approx_ads": 7, "verified": true, "advertiser_id": "AR18113734746486865921", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergo-lab", "name": "Ergo-Lab", "domain": "", "approx_ads": 5, "verified": true, "advertiser_id": "AR11129800714086252545", "is_ergo": false, "keywords": ["ergo"], "creatives": {"n": 1, "formats": "text", "first_shown": "2022-04-05 23:33:37 +00:00", "last_shown": "2026-05-29 14:25:11 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/6978591038471253993", "transparency": "https://adstransparency.google.com/advertiser/AR11129800714086252545/creative/CR07611085328761225217?region=DE"}}, {"key": "b:ergoithub", "name": "Ergoithub", "domain": "", "approx_ads": 3, "verified": false, "advertiser_id": "AR00163644077953253377", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergostock", "name": "Ergostock", "domain": "", "approx_ads": 3, "verified": false, "advertiser_id": "AR05825690462018600961", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergomatic", "name": "ERGOMATIC", "domain": "", "approx_ads": 3, "verified": true, "advertiser_id": "AR00188798172397568001", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergohome", "name": "Ergohome", "domain": "", "approx_ads": 2, "verified": true, "advertiser_id": "AR18067837729529397249", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergodyne", "name": "Ergodyne", "domain": "", "approx_ads": 1, "verified": true, "advertiser_id": "AR10897146957046743041", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "b:ergono3d", "name": "ERGONO3D", "domain": "", "approx_ads": 1, "verified": true, "advertiser_id": "AR12978545652660174849", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "ergo.lv", "name": "ergo.lv", "domain": "ergo.lv", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "ergo.ee", "name": "ergo.ee", "domain": "ergo.ee", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "ergo.lt", "name": "ergo.lt", "domain": "ergo.lt", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "pergo.no", "name": "pergo.no", "domain": "pergo.no", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "ergo.com", "name": "ergo.com", "domain": "ergo.com", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "pergo.dk", "name": "pergo.dk", "domain": "pergo.dk", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "bergo.pl", "name": "bergo.pl", "domain": "bergo.pl", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "ergoni.de", "name": "ergoni.de", "domain": "ergoni.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}, {"key": "x-ergo.de", "name": "x-ergo.de", "domain": "x-ergo.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["ergo"], "creatives": null}], "Zahnzusatz": [{"key": "zahnzusatzversicherung.care", "name": "zahnzusatzversicherung.care", "domain": "zahnzusatzversicherung.care", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "test-zahnzusatzversicherung.de", "name": "test-zahnzusatzversicherung.de", "domain": "test-zahnzusatzversicherung.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherung-direkt.de", "name": "zahnzusatzversicherung-direkt.de", "domain": "zahnzusatzversicherung-direkt.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "heynen-zahnzusatzversicherung.de", "name": "heynen-zahnzusatzversicherung.de", "domain": "heynen-zahnzusatzversicherung.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherung-kinder.ch", "name": "zahnzusatzversicherung-kinder.ch", "domain": "zahnzusatzversicherung-kinder.ch", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherung-experten.de", "name": "zahnzusatzversicherung-experten.de", "domain": "zahnzusatzversicherung-experten.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherungen-portal.de", "name": "zahnzusatzversicherungen-portal.de", "domain": "zahnzusatzversicherungen-portal.de", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherung-vergleich.net", "name": "zahnzusatzversicherung-vergleich.net", "domain": "zahnzusatzversicherung-vergleich.net", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}, {"key": "zahnzusatzversicherungen-vergleich.com", "name": "zahnzusatzversicherungen-vergleich.com", "domain": "zahnzusatzversicherungen-vergleich.com", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["zahnzusatzversicherung"], "creatives": null}], "Sterbegeld": [{"key": "b:vorsorgekasse-hoesch-dortmund-sterbegeldversicherung-vvag", "name": "Vorsorgekasse Hoesch Dortmund Sterbegeldversicherung VVaG", "domain": "", "approx_ads": 69, "verified": true, "advertiser_id": "AR14204174897684414465", "is_ergo": false, "keywords": ["sterbegeldversicherung"], "creatives": {"n": 6, "formats": "text", "first_shown": "2025-08-05 09:09:42 +00:00", "last_shown": "2026-05-31 19:46:04 +00:00", "preview": "https://tpc.googlesyndication.com/archive/simgad/15883991652121427067", "transparency": "https://adstransparency.google.com/advertiser/AR14204174897684414465/creative/CR11630494987703025665?region=DE"}}, {"key": "b:solidar-versicherungsgemeinschaft-sterbegeldversicherung-vvag", "name": "Solidar Versicherungsgemeinschaft Sterbegeldversicherung VVaG", "domain": "", "approx_ads": 48, "verified": true, "advertiser_id": "AR17593206734803959809", "is_ergo": false, "keywords": ["sterbegeldversicherung"], "creatives": {"n": 1, "formats": "text", "first_shown": "2025-06-04 00:14:06 +00:00", "last_shown": "2026-06-01 05:32:42 +00:00", "preview": "", "transparency": "https://adstransparency.google.com/advertiser/AR17593206734803959809/creative/CR17967848812114345985?region=DE"}}, {"key": "sterbegeldversicherung-2022.com", "name": "sterbegeldversicherung-2022.com", "domain": "sterbegeldversicherung-2022.com", "approx_ads": 0, "verified": false, "advertiser_id": "", "is_ergo": false, "keywords": ["sterbegeldversicherung"], "creatives": null}]}, "delta": {"Marke allgemein": {"prev_run": null, "new": [], "gone": []}, "Zahnzusatz": {"prev_run": null, "new": ["muenchener-verein.de"], "gone": []}, "Sterbegeld": {"prev_run": null, "new": ["check24.de"], "gone": []}}, "trademark": [], "ts": {"runs": ["2026-06-01T07:52:01+00:00"], "clusters": ["Marke allgemein", "Zahnzusatz", "Sterbegeld"], "density": {"Marke allgemein": [0], "Zahnzusatz": [1], "Sterbegeld": [1]}, "namespace": {"Marke allgemein": [19], "Zahnzusatz": [9], "Sterbegeld": [3]}, "ergo_presence": [0.0], "trademark": [0], "bidder_intensity": {"muenchener-verein.de": [70.0], "check24.de": [70.0]}, "bidder_names": {"muenchener-verein.de": "Münchener Verein", "check24.de": "CHECK24"}}};
 let current = DATA.clusters[0];
 let barChart;
-function escapeHtml(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function esc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmtAbove(r){
   if(r.is_ergo) return '–';
   if(r.common_n) return r.above_ergo_n+'/'+r.common_n+' ('+Math.round(r.above_ergo_pct)+'%)';
   return '–';
 }
 function fmtRun(ts){ return (ts||'').replace('T',' ').slice(5,16); }
-function adDetail(r){
-  var h='<div class="addet">';
-  if(r.live_ads && r.live_ads.length){
-    h += r.live_ads.map(function(a){
-      var er = (a.ergo_rank==null) ? 'ERGO nicht live' : ('ERGO Pos '+a.ergo_rank);
-      var above = a.above_ergo ? '<span class="ab">ueber ERGO</span>' : '';
-      var link = a.url ? '<div class="adl"><a href="'+escapeHtml(a.url)+'" target="_blank" rel="noopener">Landingpage ↗</a></div>' : '';
-      return '<div class="adrow"><div class="adkw">'+escapeHtml(a.keyword)+' · Pos '+a.rank+' ('+er+') '+above+'</div>'
-        + '<div class="adh">'+escapeHtml(a.headline||'(kein Titel)')+'</div>'
-        + (a.description?'<div class="add">'+escapeHtml(a.description)+'</div>':'') + link + '</div>';
-    }).join('');
-  } else {
-    h += '<div class="adkw">Keine Live-Anzeige im letzten Lauf erfasst.</div>';
-  }
-  var c = r.creatives;
-  if(c){
-    var act = (c.first_shown||c.last_shown) ? ('aktiv '+escapeHtml((c.first_shown||'').slice(0,10))+' – '+escapeHtml((c.last_shown||'').slice(0,10))) : '';
-    h += '<div class="cre"><b>Kreative (Ads Transparency):</b> '+(c.n||0)+' Anzeige(n)'
-      + (c.formats?' · Formate: '+escapeHtml(c.formats):'') + (act?' · '+act:'')
-      + (c.transparency?' · <a href="'+escapeHtml(c.transparency)+'" target="_blank" rel="noopener">in Google Ads Transparency ansehen ↗</a>':'')
-      + (c.preview?'<img src="'+escapeHtml(c.preview)+'" alt="Anzeigen-Vorschau">':'') + '</div>';
-  }
-  return h + '</div>';
+function liveDetail(r){
+  if(!r.ads || !r.ads.length) return '<div class="addet"><div class="adkw">Keine Anzeigendetails.</div></div>';
+  return '<div class="addet">'+r.ads.map(function(a){
+    var er=(a.ergo_rank==null)?'ERGO nicht live':('ERGO Pos '+a.ergo_rank);
+    var ab=a.above_ergo?'<span class="ab">ueber ERGO</span>':'';
+    var link=a.url?'<div class="adl"><a href="'+esc(a.url)+'" target="_blank" rel="noopener">Landingpage ↗</a></div>':'';
+    return '<div class="adrow"><div class="adkw">'+esc(a.keyword)+' · Pos '+a.rank+' ('+er+') '+ab+'</div>'
+      +'<div class="adh">'+esc(a.headline||'(kein Titel)')+'</div>'
+      +(a.description?'<div class="add">'+esc(a.description)+'</div>':'')+link+'</div>';
+  }).join('')+'</div>';
 }
-document.getElementById('sub').textContent = 'Stand: ' + DATA.current_week + ' - Lauf ' + fmtRun(DATA.current_run) + ' - Provider ' + DATA.provider;
-document.getElementById('gen').textContent = DATA.generated;
-document.getElementById('runBtn').href = DATA.routine_url;
-var kpiDefs = [['bidders','Bieter (Transparency)'],['live_ads','Live-Anzeigen'],['trademark','Trademark-Kandidaten']];
-document.getElementById('kpis').innerHTML = kpiDefs.map(function(k){
+function nsDetail(n){
+  var c=n.creatives, h='<div class="addet">';
+  h+='<div class="adkw">Keywords: '+esc((n.keywords||[]).join(', '))+'</div>';
+  if(c){
+    var act=(c.first_shown||c.last_shown)?('aktiv '+esc((c.first_shown||'').slice(0,10))+' – '+esc((c.last_shown||'').slice(0,10))):'';
+    h+='<div class="cre"><b>Kreative (Ad Transparency):</b> '+(c.n||0)+' Anzeige(n)'
+      +(c.formats?' · Formate: '+esc(c.formats):'')+(act?' · '+act:'')
+      +(c.transparency?' · <a href="'+esc(c.transparency)+'" target="_blank" rel="noopener">in Google Ads Transparency ansehen ↗</a>':'')
+      +(c.preview?'<img src="'+esc(c.preview)+'" alt="Vorschau">':'')+'</div>';
+  } else { h+='<div class="adkw">Keine Kreativ-Details abgerufen.</div>'; }
+  return h+'</div>';
+}
+document.getElementById('sub').textContent='Stand: '+DATA.current_week+' - Lauf '+fmtRun(DATA.current_run)+' - Provider '+DATA.provider;
+document.getElementById('gen').textContent=DATA.generated;
+document.getElementById('runBtn').href=DATA.routine_url;
+var kpiDefs=[['live_comp','Live-Wettbewerber'],['live_ads','Live-Anzeigen'],['trademark','Trademark-Kandidaten']];
+document.getElementById('kpis').innerHTML=kpiDefs.map(function(k){
   return '<div class="kpi"><div class="n">'+DATA.kpis[k[0]]+'</div><div class="l">'+k[1]+'</div></div>';
 }).join('');
-document.getElementById('tabs').innerHTML = DATA.clusters.map(function(c){
-  return '<button class="tab" data-c="'+escapeHtml(c)+'">'+escapeHtml(c)+'</button>';
+document.getElementById('tabs').innerHTML=DATA.clusters.map(function(c){
+  return '<button class="tab" data-c="'+esc(c)+'">'+esc(c)+'</button>';
 }).join('');
-Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
-  b.addEventListener('click', function(){ current = b.dataset.c; render(); });
+Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(b){
+  b.addEventListener('click',function(){current=b.dataset.c; render();});
 });
-function render(){
-  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
-    b.classList.toggle('active', b.dataset.c === current);
-  });
-  document.getElementById('clName').textContent = '- ' + current;
-  var rows = (DATA.scores[current]||[]).slice(0,20);
-  var barRows = rows.slice(0,12);
-  var labels = barRows.map(function(r){return r.name||r.domain;});
-  var vals = barRows.map(function(r){return r.score;});
-  var colors = barRows.map(function(r){return r.is_ergo ? '#9aa0a6' : '#c8102e';});
-  if(barChart) barChart.destroy();
-  barChart = new Chart(document.getElementById('barChart'), {
-    type:'bar',
-    data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:4}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,title:{display:true,text:'Score'}}}}
-  });
-  var d = DATA.delta[current] || {};
-  document.getElementById('delta').innerHTML = d.prev_run
-    ? '<b>vs Vorlauf</b> - <span class="new">NEU: '+(d.new.length?d.new.join(', '):'-')+'</span> - <span class="gone">WEG: '+(d.gone.length?d.gone.join(', '):'-')+'</span>'
-    : 'Kein Vorlauf (Basislauf).';
-  var tb = document.querySelector('#bidTable tbody');
-  tb.innerHTML = rows.map(function(r,i){
-    var nm = escapeHtml(r.name||r.domain) + (r.is_ergo?'<span class="badge">ERGO</span>':'') + (r.verified?'<span class="vbadge">verifiziert</span>':'');
-    var main = '<tr class="bid"><td class="exp">&#9656;</td><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+nm+'</td>'
-      + '<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'
-      + '<td class="num">'+r.best_rank+'</td><td>'+fmtAbove(r)+'</td><td class="num">'+(r.approx_ads||'–')+'</td><td>'+r.persistence_wk+'</td></tr>';
-    var det = '<tr class="det" style="display:none"><td colspan="9">'+adDetail(r)+'</td></tr>';
-    return main+det;
-  }).join('');
-  Array.prototype.forEach.call(document.querySelectorAll('#bidTable tbody tr.bid'), function(tr){
-    tr.addEventListener('click', function(){
-      var dd = tr.nextElementSibling, open = dd.style.display==='none';
-      dd.style.display = open?'table-row':'none';
-      tr.querySelector('.exp').innerHTML = open?'&#9662;':'&#9656;';
+function expandify(sel, detailFn, colspan){
+  Array.prototype.forEach.call(document.querySelectorAll(sel+' tbody tr.bid'),function(tr){
+    tr.addEventListener('click',function(){
+      var dd=tr.nextElementSibling, open=dd.style.display==='none';
+      dd.style.display=open?'table-row':'none';
+      tr.querySelector('.exp').innerHTML=open?'&#9662;':'&#9656;';
     });
   });
 }
-function lineChart(id, labels, datasets, yTitle){
-  return new Chart(document.getElementById(id), {
-    type:'line',
-    data:{labels:labels, datasets:datasets},
-    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},
-      scales:{y:{beginAtZero:true,title:{display:true,text:yTitle}}},
-      elements:{point:{radius:2}}}
+function render(){
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(b){
+    b.classList.toggle('active',b.dataset.c===current);
   });
+  document.getElementById('clName').textContent='- '+current;
+  document.getElementById('clName2').textContent='- '+current;
+  var rows=(DATA.scores[current]||[]);
+  var comp=rows.filter(function(r){return !r.is_ergo;});
+  // Bar
+  var barRows=rows.slice(0,12);
+  if(barChart) barChart.destroy();
+  barChart=new Chart(document.getElementById('barChart'),{
+    type:'bar',
+    data:{labels:barRows.map(function(r){return r.name||r.domain;}),
+      datasets:[{data:barRows.map(function(r){return r.score;}),
+        backgroundColor:barRows.map(function(r){return r.is_ergo?'#9aa0a6':'#c8102e';}),borderRadius:4}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,title:{display:true,text:'Score'}}}}
+  });
+  var d=DATA.delta[current]||{};
+  document.getElementById('delta').innerHTML=d.prev_run
+    ?'<b>vs Vorlauf</b> - <span class="new">NEU: '+(d.new.length?d.new.join(', '):'-')+'</span> - <span class="gone">WEG: '+(d.gone.length?d.gone.join(', '):'-')+'</span>'
+    :'Kein Vorlauf (Basislauf).';
+  var tb=document.querySelector('#bidTable tbody');
+  tb.innerHTML=rows.map(function(r){return '';}).join('');
+  if(rows.length){
+    tb.innerHTML=rows.map(function(r,i){
+      var nm=esc(r.name||r.domain)+(r.is_ergo?'<span class="badge">ERGO</span>':'');
+      var main='<tr class="bid"><td class="exp">&#9656;</td><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+nm+'</td>'
+        +'<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'
+        +'<td class="num">'+r.best_rank+'</td><td>'+fmtAbove(r)+'</td><td>'+r.persistence_wk+'</td></tr>';
+      return main+'<tr class="det" style="display:none"><td colspan="8">'+liveDetail(r)+'</td></tr>';
+    }).join('');
+    document.getElementById('liveEmpty').textContent='';
+  } else {
+    document.getElementById('liveEmpty').textContent='In diesem Lauf wurden keine Live-Textanzeigen erfasst (Google zeigt aktuell wenige klassische Textanzeigen auf diese Begriffe).';
+  }
+  expandify('#bidTable');
+  // Namensraum
+  var ns=DATA.namespace[current]||[];
+  var nt=document.querySelector('#nsTable tbody');
+  nt.innerHTML=ns.map(function(n){
+    var main='<tr class="bid"><td class="exp">&#9656;</td><td>'+esc(n.name)+(n.verified?'<span class="vbadge">verifiziert</span>':'')+'</td>'
+      +'<td class="num">'+(n.approx_ads||'–')+'</td><td>'+(n.verified?'ja':'–')+'</td></tr>';
+    return main+'<tr class="det" style="display:none"><td colspan="4">'+nsDetail(n)+'</td></tr>';
+  }).join('');
+  document.getElementById('nsEmpty').textContent=ns.length?'':'Keine Namens-Treffer.';
+  expandify('#nsTable');
+}
+function lineChart(id,labels,ds,yTitle){
+  return new Chart(document.getElementById(id),{type:'line',data:{labels:labels,datasets:ds},
+    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{y:{beginAtZero:true,title:{display:true,text:yTitle}}},elements:{point:{radius:2}}}});
 }
 function renderTS(){
-  var ts = DATA.ts; var labels = ts.runs.map(fmtRun);
-  var pal = ['#c8102e','#2563eb','#15803d','#d97706','#7c3aed','#0891b2'];
-  lineChart('tsDensity', labels, ts.clusters.map(function(c,i){
+  var ts=DATA.ts, labels=ts.runs.map(fmtRun), pal=['#c8102e','#2563eb','#15803d','#d97706','#7c3aed','#0891b2'];
+  lineChart('tsDensity',labels,ts.clusters.map(function(c,i){
     return {label:c,data:ts.density[c],borderColor:pal[i%pal.length],backgroundColor:'transparent',tension:.25};
-  }), 'Wettbewerber');
-  lineChart('tsErgo', labels, [
-    {label:'% Keywords mit ERGO',data:ts.ergo_presence,borderColor:'#c8102e',backgroundColor:'transparent',tension:.25,yAxisID:'y'},
-    {label:'Ø ERGO-Rang',data:ts.ergo_avg_rank,borderColor:'#2563eb',backgroundColor:'transparent',tension:.25,spanGaps:true,yAxisID:'y1'}
-  ], '% sichtbar');
-  // zweite Achse fuer ERGO-Rang
-  if(window.Chart){ var ec = Chart.getChart('tsErgo'); if(ec){ ec.options.scales.y1={position:'right',beginAtZero:true,reverse:true,title:{display:true,text:'Ø Rang'},grid:{drawOnChartArea:false}}; ec.update(); } }
-  var bk = Object.keys(ts.bidder_intensity);
-  lineChart('tsBidder', labels, bk.map(function(k,i){
+  }),'Live-Wettbewerber');
+  lineChart('tsErgo',labels,[{label:'% Keywords mit ERGO-Anzeige',data:ts.ergo_presence,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}],'% sichtbar');
+  var bk=Object.keys(ts.bidder_intensity);
+  lineChart('tsBidder',labels,bk.map(function(k,i){
     return {label:(ts.bidder_names[k]||k),data:ts.bidder_intensity[k],borderColor:pal[i%pal.length],backgroundColor:'transparent',tension:.25};
-  }), 'Intensitaet');
-  lineChart('tsTm', labels, [
-    {label:'Trademark-Treffer',data:ts.trademark,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}
-  ], 'Treffer');
+  }),'Intensitaet');
+  lineChart('tsTm',labels,[{label:'Trademark-Treffer',data:ts.trademark,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}],'Treffer');
 }
 function renderTM(){
-  var tb = document.querySelector('#tmTable tbody');
-  if(!DATA.trademark.length){ tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>'; return; }
-  tb.innerHTML = DATA.trademark.map(function(r){
-    return '<tr><td>'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.cluster)+'</td><td>'+escapeHtml(r.keyword)+'</td><td>'+escapeHtml(r.headline)+'</td></tr>';
+  var tb=document.querySelector('#tmTable tbody');
+  if(!DATA.trademark.length){tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>';return;}
+  tb.innerHTML=DATA.trademark.map(function(r){
+    return '<tr><td>'+esc(r.domain)+'</td><td>'+esc(r.cluster)+'</td><td>'+esc(r.keyword)+'</td><td>'+esc(r.headline)+'</td></tr>';
   }).join('');
 }
 render(); renderTS(); renderTM();

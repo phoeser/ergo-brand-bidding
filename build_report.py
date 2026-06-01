@@ -2,30 +2,20 @@
 """
 ERGO Brand Bidding – Auswertung, Report & Zeitreihen (Standardlib-only).
 
-Datenquellen (alle ueber DataForSEO, vom Scanner zusammengefuehrt):
-  - source="adv"  : Google Ads Advertisers  -> WER bietet (vollstaendige Liste,
-                    approx_ads_count, verified, Transparency-Rang)
-  - source="serp" : Google Organic Paid-Block -> echte Anzeigentexte, Landingpage,
-                    echte Seitenposition (nur was live geschaltet ist)
-  - Kreative je Anbieter (ads_search) liegen separat in CREATIVES_FILE.
+HAUPTSIGNAL = Live-Suche (Paid-Block): WER taucht wirklich als Anzeige auf,
+wenn jemand den Begriff googelt -> echtes Brand-Bidding (Text, Landingpage,
+Position ggue. ERGO).  source = "serp"
 
-Aufgaben:
-  1. Wochen-/Lauf-CSV einlesen, in Master-Historie anhaengen (dedupliziert).
-  2. Snapshot des letzten Laufs: Intensitaets-Score, Praesenz, Ueber-ERGO,
-     Live-Anzeigentexte + Landingpages, Kreativ-Infos je Bieter.
-  3. Zeitreihen ueber ALLE Laeufe (Bieterdichte, ERGO-Sichtbarkeit,
-     Top-Wettbewerber-Intensitaet, Trademark-Treffer).
-  4. Markdown-Report schreiben + 5-Zeilen-Zusammenfassung.
-
-Scoring-Formel (0-100) je Advertiser x Cluster (auf adv-Daten):
-  Score = 100 * (0.5*Praesenz + 0.3*Positionsgewicht + 0.2*Persistenz)
+ZUSATZ-LAYER = Ads-Transparency (ads_advertisers): Werbetreibende, deren NAME
+zum Begriff passt -> "Markenraum / Namensvettern" (KEIN Nachweis von
+Brand-Bidding!).  source = "adv".  Kreative je Anbieter (ads_search) in
+CREATIVES_FILE.
 """
 
 import os
 import csv
 import sys
 import glob
-import json
 import datetime as dt
 from collections import defaultdict
 
@@ -45,8 +35,14 @@ CREATIVE_FIELDS = [
     "sample_preview_url", "transparency_url",
 ]
 
-# ERGO-eigene Domains; zusaetzlich gilt jeder Advertiser-Name mit "ergo" als ERGO.
 ERGO_OWN = {"ergo.de", "ergo-direkt.de", "ergodirekt.de", "dkv.de", "das.de"}
+# Enge Namensliste fuer ERGO-eigene Konten/Agenturen (kein "ergo*"-Wildcard!)
+ERGO_NAME_HINTS = (
+    "ergo versicherung", "ergo group", "ergo direkt", "ergo direct",
+    "ergo deutschland", "ergo vorsorge", "ergo krankenversicherung",
+    "ergo lebensversicherung", "ergo reiseversicherung", "ergo beratung",
+    "dkv deutsche", "d.a.s", "das rechtsschutz",
+)
 
 W_PRESENCE, W_POSITION, W_PERSIST = 0.5, 0.3, 0.2
 
@@ -70,13 +66,14 @@ def read_csv(path):
 
 
 def is_ergo(row):
+    """Praezise: ERGO nur bei eigener Domain oder eindeutigem Marken-Namen."""
     dom = (row.get("advertiser_domain") or "").lower()
-    name = (row.get("advertiser_name") or "").lower()
     if dom in ERGO_OWN:
         return True
-    # Wortgrenze grob: "ergo" als eigenstaendiges Token im Namen
-    return any(tok == "ergo" or tok.startswith("ergo")
-               for tok in name.replace("|", " ").replace("-", " ").split())
+    name = (row.get("advertiser_name") or "").lower().strip()
+    if name == "ergo":
+        return True
+    return any(h in name for h in ERGO_NAME_HINTS)
 
 
 def pick_latest_week_csv():
@@ -99,7 +96,6 @@ def _row_key(r):
 
 def append_history(week_rows):
     existing = read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else []
-    # Alte Schema-Zeilen ohne gueltige Quelle verwerfen (sauberer Zeitreihen-Start)
     existing = [r for r in existing if r.get("source") in ("adv", "serp")]
     seen = {_row_key(r) for r in existing}
     added = [r for r in week_rows if _row_key(r) not in seen]
@@ -113,13 +109,11 @@ def append_history(week_rows):
 
 
 def read_creatives_latest():
-    """Pro advertiser_id die Kreativ-Infos des juengsten Laufs."""
     if not os.path.exists(CREATIVES_FILE):
         return {}
-    rows = read_csv(CREATIVES_FILE)
     out = {}
-    for r in sorted(rows, key=lambda x: x.get("run_timestamp", "")):
-        out[r.get("advertiser_id", "")] = r  # spaetere Laeufe ueberschreiben
+    for r in sorted(read_csv(CREATIVES_FILE), key=lambda x: x.get("run_timestamp", "")):
+        out[r.get("advertiser_id", "")] = r
     out.pop("", None)
     return out
 
@@ -144,18 +138,16 @@ def last_n_weeks(history, current_week, n=4):
 
 
 def prev_run(history, current_run):
-    rs = sorted({r["run_timestamp"] for r in history if r["run_timestamp"] < current_run})
+    rs = sorted({r["run_timestamp"] for r in history
+                 if r["run_timestamp"] < current_run and r.get("source") == "serp"})
     return rs[-1] if rs else None
 
 
-# --- Scoring-Snapshot (letzter Lauf, adv-Daten) --------------------------
+# --- HAUPTSIGNAL: Live-Bieter (serp) -------------------------------------
 
-def ergo_rank_by_keyword(rows, source):
-    """Beste (kleinste) ERGO-Position je Keyword fuer die gegebene Quelle."""
+def _ergo_live_rank(serp_rows):
     out = {}
-    for r in rows:
-        if r.get("source") != source:
-            continue
+    for r in serp_rows:
         if is_ergo(r):
             kw = r["keyword"]
             rk = _to_int(r["rank"])
@@ -164,47 +156,28 @@ def ergo_rank_by_keyword(rows, source):
     return out
 
 
-def score_cluster(cur_rows, history, cluster, current_week, creatives=None):
-    creatives = creatives or {}
-    adv = [r for r in cur_rows if r["cluster"] == cluster and r.get("source") == "adv"]
+def live_bidders(cur_rows, history, cluster, current_week):
     serp = [r for r in cur_rows if r["cluster"] == cluster and r.get("source") == "serp"]
-
-    keywords = {r["keyword"] for r in adv}
+    keywords = {r["keyword"] for r in serp}
     total_kw = len(keywords) or 1
+    ergo_rk = _ergo_live_rank(serp)
 
-    ergo_adv = ergo_rank_by_keyword(
-        [r for r in cur_rows if r["cluster"] == cluster], "adv")
-    ergo_serp = ergo_rank_by_keyword(
-        [r for r in cur_rows if r["cluster"] == cluster], "serp")
-
-    # Persistenz: in wievielen der letzten 4 Wochen war der Advertiser im Cluster
     persist_weeks = last_n_weeks(history, current_week, 4)
     n_persist = len(persist_weeks) or 1
     weeks_present = defaultdict(set)
     for r in history:
-        if (r["cluster"] == cluster and r.get("source") == "adv"
-                and r["iso_week"] in persist_weeks):
-            weeks_present[r["advertiser_key"]].add(r["iso_week"])
+        if (r["cluster"] == cluster and r.get("source") == "serp"
+                and r["iso_week"] in persist_weeks and r.get("advertiser_domain")):
+            weeks_present[r["advertiser_domain"]].add(r["iso_week"])
 
-    # Live-Details je Domain (aus serp)
-    serp_by_dom = defaultdict(list)
+    by_dom = defaultdict(list)
     for r in serp:
         if r.get("advertiser_domain"):
-            serp_by_dom[r["advertiser_domain"]].append(r)
-
-    by_key = defaultdict(list)
-    for r in adv:
-        by_key[r["advertiser_key"]].append(r)
+            by_dom[r["advertiser_domain"]].append(r)
 
     scored = []
-    for key, drows in by_key.items():
-        if not key:
-            continue
-        name = drows[0].get("advertiser_name") or key
-        dom = drows[0].get("advertiser_domain") or ""
-        adv_id = next((d.get("advertiser_id") for d in drows if d.get("advertiser_id")), "")
-        ergo_flag = is_ergo(drows[0])
-
+    for dom, drows in by_dom.items():
+        ergo_flag = dom in ERGO_OWN or is_ergo(drows[0])
         kw_rank = {}
         for r in drows:
             kw = r["keyword"]
@@ -214,132 +187,131 @@ def score_cluster(cur_rows, history, cluster, current_week, creatives=None):
         presence = len(kw_rank) / total_kw
         ranks = list(kw_rank.values())
         position = sum(1.0 / max(1, rk) for rk in ranks) / len(ranks)
-        persistence = len(weeks_present.get(key, set())) / n_persist
+        persistence = len(weeks_present.get(dom, set())) / n_persist
         score = 100 * (W_PRESENCE * presence + W_POSITION * position + W_PERSIST * persistence)
-        approx = max((_to_int(r.get("approx_ads_count"), 0) for r in drows), default=0)
 
-        # Ueber ERGO (Transparency-Rang)
-        common = [kw for kw in kw_rank if kw in ergo_adv]
-        above = [kw for kw in common if kw_rank[kw] < ergo_adv[kw]]
+        common = [kw for kw in kw_rank if kw in ergo_rk]
+        above = [kw for kw in common if kw_rank[kw] < ergo_rk[kw]]
         above_pct = round(100 * len(above) / len(common), 0) if common else None
 
-        # Live-Anzeigen (echter Text + Landingpage + Live-Position vs ERGO)
-        live_ads = []
-        for r in serp_by_dom.get(dom, []):
+        ads = []
+        for r in sorted(drows, key=lambda x: (_to_int(x["rank"]), x["keyword"])):
             kw = r["keyword"]
-            rk = _to_int(r["rank"])
-            er = ergo_serp.get(kw)
-            live_ads.append({
-                "keyword": kw, "rank": rk, "ergo_rank": er,
-                "above_ergo": (er is not None and rk < er),
+            er = ergo_rk.get(kw)
+            ads.append({
+                "keyword": kw, "rank": _to_int(r["rank"]), "ergo_rank": er,
+                "above_ergo": (er is not None and _to_int(r["rank"]) < er),
                 "headline": r.get("headline", "") or "",
                 "description": r.get("description", "") or "",
                 "url": r.get("url", "") or "",
             })
-        live_ads.sort(key=lambda a: (a["rank"], a["keyword"]))
-
-        cre = creatives.get(adv_id) if adv_id else None
-
         scored.append({
-            "key": key,
-            "domain": dom,
-            "name": name,
-            "advertiser_id": adv_id,
-            "score": round(score, 1),
-            "presence_pct": round(100 * presence, 0),
-            "best_rank": min(ranks),
-            "avg_rank": round(sum(ranks) / len(ranks), 1),
-            "approx_ads": approx,
-            "verified": _to_bool(drows[0].get("verified")),
-            "persistence_wk": f"{len(weeks_present.get(key, set()))}/{n_persist}",
-            "is_ergo": ergo_flag,
-            "above_ergo_n": len(above),
-            "common_n": len(common),
-            "above_ergo_pct": above_pct,
-            "live_ads": live_ads,
-            "creatives": ({
-                "n": _to_int(cre.get("n_creatives"), 0),
-                "formats": cre.get("formats", ""),
-                "first_shown": cre.get("first_shown", ""),
-                "last_shown": cre.get("last_shown", ""),
-                "preview": cre.get("sample_preview_url", ""),
-                "transparency": cre.get("transparency_url", ""),
-            } if cre else None),
+            "domain": dom, "name": drows[0].get("advertiser_name") or dom,
+            "score": round(score, 1), "presence_pct": round(100 * presence, 0),
+            "best_rank": min(ranks), "persistence_wk": f"{len(weeks_present.get(dom, set()))}/{n_persist}",
+            "is_ergo": ergo_flag, "above_ergo_n": len(above), "common_n": len(common),
+            "above_ergo_pct": above_pct, "ads": ads,
         })
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored
 
 
-def delta_bidders(cur_rows, history, cluster, current_run):
+def live_delta(cur_rows, history, cluster, current_run):
     pr = prev_run(history, current_run)
-    cur = {r["advertiser_key"] for r in cur_rows
-           if r["cluster"] == cluster and r.get("source") == "adv" and r["advertiser_key"]}
+    cur = {r["advertiser_domain"] for r in cur_rows
+           if r["cluster"] == cluster and r.get("source") == "serp"
+           and r["advertiser_domain"] and not is_ergo(r)}
     if not pr:
         return sorted(cur), [], None
-    prev = {r["advertiser_key"] for r in history
-            if r["cluster"] == cluster and r.get("source") == "adv"
-            and r["run_timestamp"] == pr and r["advertiser_key"]}
+    prev = {r["advertiser_domain"] for r in history
+            if r["cluster"] == cluster and r.get("source") == "serp"
+            and r["run_timestamp"] == pr and r["advertiser_domain"] and not is_ergo(r)}
     return sorted(cur - prev), sorted(prev - cur), pr
+
+
+# --- ZUSATZ-LAYER: Markenraum / Namensvettern (adv) ----------------------
+
+def name_matches(cur_rows, cluster, creatives=None):
+    creatives = creatives or {}
+    adv = [r for r in cur_rows if r["cluster"] == cluster and r.get("source") == "adv"]
+    by_key = defaultdict(list)
+    for r in adv:
+        if r["advertiser_key"]:
+            by_key[r["advertiser_key"]].append(r)
+    out = []
+    for key, rows in by_key.items():
+        adv_id = next((x.get("advertiser_id") for x in rows if x.get("advertiser_id")), "")
+        cre = creatives.get(adv_id) if adv_id else None
+        out.append({
+            "key": key, "name": rows[0].get("advertiser_name") or key,
+            "domain": rows[0].get("advertiser_domain") or "",
+            "approx_ads": max((_to_int(x.get("approx_ads_count"), 0) for x in rows), default=0),
+            "verified": any(_to_bool(x.get("verified")) for x in rows),
+            "advertiser_id": adv_id, "is_ergo": is_ergo(rows[0]),
+            "keywords": sorted({x["keyword"] for x in rows}),
+            "creatives": ({
+                "n": _to_int(cre.get("n_creatives"), 0), "formats": cre.get("formats", ""),
+                "first_shown": cre.get("first_shown", ""), "last_shown": cre.get("last_shown", ""),
+                "preview": cre.get("sample_preview_url", ""), "transparency": cre.get("transparency_url", ""),
+            } if cre else None),
+        })
+    out.sort(key=lambda x: x["approx_ads"], reverse=True)
+    return out
 
 
 def trademark_candidates(cur_rows):
     out, seen = [], set()
     for r in cur_rows:
-        if r.get("source") != "serp" or not _to_bool(r.get("brand_in_copy")):
+        if r.get("source") != "serp" or not _to_bool(r.get("brand_in_copy")) or is_ergo(r):
             continue
-        key = (r["advertiser_key"], r["keyword"], r.get("headline", ""))
-        if key in seen or is_ergo(r):
+        k = (r["advertiser_domain"], r["keyword"], r.get("headline", ""))
+        if k in seen:
             continue
-        seen.add(key)
+        seen.add(k)
         out.append(r)
     return out
 
 
-# --- Zeitreihen ueber alle Laeufe ----------------------------------------
+# --- Zeitreihen ueber alle Laeufe (auf LIVE-Daten) -----------------------
 
 def time_series(history):
     runs = runs_sorted(history)
     clusters = list(dict.fromkeys(r["cluster"] for r in history))
     density = {cl: [] for cl in clusters}
-    ergo_presence, ergo_avg_rank, trademark = [], [], []
+    ergo_presence, trademark, namespace = [], [], {cl: [] for cl in clusters}
 
-    # Top-Bieter ueber alle Laeufe (nach juengstem Score-Proxy) fuer Intensitaetsreihe
     latest = runs[-1] if runs else ""
     proxy = defaultdict(float)
     for r in history:
-        if r["run_timestamp"] == latest and r.get("source") == "adv" and not is_ergo(r):
-            proxy[r["advertiser_key"]] += 1.0 / max(1, _to_int(r["rank"]))
+        if (r["run_timestamp"] == latest and r.get("source") == "serp"
+                and r.get("advertiser_domain") and not is_ergo(r)):
+            proxy[r["advertiser_domain"]] += 1.0 / max(1, _to_int(r["rank"]))
     top_keys = [k for k, _ in sorted(proxy.items(), key=lambda x: x[1], reverse=True)[:6]]
     bidder_intensity = {k: [] for k in top_keys}
-    bidder_names = {}
+    bidder_names = {k: k for k in top_keys}
 
     for run in runs:
         rr = [r for r in history if r["run_timestamp"] == run]
-        adv = [r for r in rr if r.get("source") == "adv"]
         serp = [r for r in rr if r.get("source") == "serp"]
+        adv = [r for r in rr if r.get("source") == "adv"]
         for cl in clusters:
-            comp = {r["advertiser_key"] for r in adv
-                    if r["cluster"] == cl and r["advertiser_key"] and not is_ergo(r)}
+            comp = {r["advertiser_domain"] for r in serp
+                    if r["cluster"] == cl and r["advertiser_domain"] and not is_ergo(r)}
             density[cl].append(len(comp))
-
-        kws = {r["keyword"] for r in adv}
-        ekws = {r["keyword"] for r in adv if is_ergo(r)}
+            nm = {r["advertiser_key"] for r in adv
+                  if r["cluster"] == cl and r["advertiser_key"] and not is_ergo(r)}
+            namespace[cl].append(len(nm))
+        kws = {r["keyword"] for r in serp}
+        ekws = {r["keyword"] for r in serp if is_ergo(r)}
         ergo_presence.append(round(100 * len(ekws) / len(kws), 0) if kws else 0)
-        eranks = [_to_int(r["rank"]) for r in adv if is_ergo(r)]
-        ergo_avg_rank.append(round(sum(eranks) / len(eranks), 1) if eranks else None)
-
-        tmseen = set()
-        for r in serp:
-            if _to_bool(r.get("brand_in_copy")) and not is_ergo(r):
-                tmseen.add((r["advertiser_key"], r["keyword"], r.get("headline", "")))
-        trademark.append(len(tmseen))
-
-        # Intensitaet je Top-Bieter (Praesenz x Position, ueber alle Cluster)
+        tm = {(r["advertiser_domain"], r["keyword"], r.get("headline", ""))
+              for r in serp if _to_bool(r.get("brand_in_copy")) and not is_ergo(r)}
+        trademark.append(len(tm))
         total_kw = len(kws) or 1
         for k in top_keys:
-            krows = [r for r in adv if r["advertiser_key"] == k]
+            krows = [r for r in serp if r["advertiser_domain"] == k]
             if krows:
-                bidder_names.setdefault(k, krows[0].get("advertiser_name") or k)
+                bidder_names[k] = krows[0].get("advertiser_name") or k
                 kw_rank = {}
                 for r in krows:
                     kw = r["keyword"]
@@ -353,18 +325,14 @@ def time_series(history):
                 bidder_intensity[k].append(0)
 
     return {
-        "runs": runs,
-        "clusters": clusters,
-        "density": density,
-        "ergo_presence": ergo_presence,
-        "ergo_avg_rank": ergo_avg_rank,
-        "trademark": trademark,
-        "bidder_intensity": bidder_intensity,
-        "bidder_names": {k: bidder_names.get(k, k) for k in top_keys},
+        "runs": runs, "clusters": clusters, "density": density,
+        "namespace": namespace, "ergo_presence": ergo_presence,
+        "trademark": trademark, "bidder_intensity": bidder_intensity,
+        "bidder_names": bidder_names,
     }
 
 
-# --- Report --------------------------------------------------------------
+# --- Report (Markdown) ---------------------------------------------------
 
 def md_table(headers, rows):
     out = ["| " + " | ".join(headers) + " |",
@@ -396,111 +364,100 @@ def build_report(week_csv):
     provider = cur_rows[0]["provider"]
     clusters = list(dict.fromkeys(r["cluster"] for r in cur_rows))
 
-    adv_rows = [r for r in cur_rows if r.get("source") == "adv"]
-    serp_rows = [r for r in cur_rows if r.get("source") == "serp"]
-    n_adv = len({r["advertiser_key"] for r in adv_rows if r["advertiser_key"]})
-    n_serp = len(serp_rows)
+    n_live = sum(1 for r in cur_rows if r.get("source") == "serp")
+    n_live_comp = len({r["advertiser_domain"] for r in cur_rows
+                       if r.get("source") == "serp" and r["advertiser_domain"] and not is_ergo(r)})
+    n_names = len({r["advertiser_key"] for r in cur_rows if r.get("source") == "adv"})
     tm = trademark_candidates(cur_rows)
 
     lines = [f"# ERGO Brand Bidding – {current_week}", ""]
     lines.append(f"*Lauf: {run_date} ({current_run}) · Provider: {provider} · "
-                 f"Bieter (Transparency): {n_adv} · Live-Anzeigen: {n_serp} · "
-                 f"Trademark-Pruefkandidaten: {len(tm)}*")
+                 f"Live-Wettbewerber: {n_live_comp} · Live-Anzeigen: {n_live} · "
+                 f"Namensraum (Ad Transparency): {n_names} · Trademark: {len(tm)}*")
     lines.append("")
-    lines.append("> Datenquellen: **Ads Advertisers** (vollstaendige Bieterliste) · "
-                 "**Live-SERP** (echte Anzeigentexte/Landingpages/Position) · "
-                 "**ads_search** (Kreativ-Infos je Anbieter).")
+    lines.append("> **Hauptsignal = Live-Suche** (echtes Brand-Bidding: Text, Landingpage, "
+                 "Position). Der Namensraum-Abschnitt listet nur Werbetreibende mit passendem "
+                 "Namen aus dem Ad-Transparency-Center – das ist **kein** Nachweis von Brand-Bidding.")
     lines.append("")
 
-    cluster_scores = {}
+    live_scores = {}
     for cl in clusters:
-        scored = score_cluster(cur_rows, history, cl, current_week, creatives)
-        cluster_scores[cl] = scored
-        lines.append(f"## {cl} – Top-20 Bieter")
+        scored = live_bidders(cur_rows, history, cl, current_week)
+        live_scores[cl] = scored
+        comp = [s for s in scored if not s["is_ergo"]]
+        lines.append(f"## {cl} – Live-Bieter (echtes Brand-Bidding)")
         lines.append("")
         if scored:
-            top = scored[:20]
-            rows = [[
-                i + 1,
-                (s["name"] or s["domain"]) + (" (ERGO)" if s["is_ergo"] else ""),
-                s["score"], f'{int(s["presence_pct"])}%', s["best_rank"],
-                _fmt_above(s), s["approx_ads"] or "–", s["persistence_wk"],
-            ] for i, s in enumerate(top)]
-            lines.append(md_table(
-                ["#", "Bieter", "Score", "Praesenz", "Best-Rang",
-                 "Ueber ERGO", "~Ads", "Persistenz"], rows))
+            rows = [[i + 1, (s["name"] or s["domain"]) + (" (ERGO)" if s["is_ergo"] else ""),
+                     s["score"], f'{int(s["presence_pct"])}%', s["best_rank"],
+                     _fmt_above(s), s["persistence_wk"]] for i, s in enumerate(scored[:20])]
+            lines.append(md_table(["#", "Domain", "Score", "Praesenz", "Best-Pos",
+                                    "Ueber ERGO", "Persistenz"], rows))
         else:
-            lines.append("*Keine Bieter erfasst.*")
+            lines.append("*Keine Live-Anzeigen in diesem Lauf erfasst.*")
+        lines.append("")
+        for s in comp[:5]:
+            if not s["ads"]:
+                continue
+            lines.append(f"**{s['name'] or s['domain']}** — Ueber ERGO: {_fmt_above(s)}")
+            for a in s["ads"][:6]:
+                er = a["ergo_rank"]
+                pos = (f"Pos {a['rank']} vs ERGO {er}" if er is not None
+                       else f"Pos {a['rank']} (ERGO nicht live)")
+                lines.append(f"- *{a['keyword']}* — {pos} — „{(a['headline'] or '(kein Titel)')[:90]}“")
+                if a["description"]:
+                    lines.append(f"  {a['description'][:140]}")
+                if a["url"]:
+                    lines.append(f"  Landingpage: {a['url']}")
+            lines.append("")
+
+    lines.append("## Markenraum / Namensvettern (Ad Transparency – kein Brand-Bidding-Nachweis)")
+    lines.append("")
+    for cl in clusters:
+        nm = [n for n in name_matches(cur_rows, cl, creatives) if not n["is_ergo"]][:15]
+        lines.append(f"**{cl}** ({len(nm)} Werbetreibende mit passendem Namen):")
+        if nm:
+            rows = [[n["name"], n["approx_ads"] or "–", "ja" if n["verified"] else "–"] for n in nm]
+            lines.append("")
+            lines.append(md_table(["Werbetreibender", "~Ads", "verifiziert"], rows))
+        else:
+            lines.append("\n*Keine Namens-Treffer.*")
         lines.append("")
 
-        detail = [s for s in scored if not s["is_ergo"] and s["live_ads"]][:5]
-        if detail:
-            lines.append(f"### {cl} – Live-Anzeigentexte & Landingpages")
-            lines.append("")
-            for s in detail:
-                lines.append(f"**{s['name'] or s['domain']}** — Ueber ERGO: {_fmt_above(s)}")
-                for a in s["live_ads"][:6]:
-                    er = a["ergo_rank"]
-                    pos = (f"Pos {a['rank']} vs ERGO {er}" if er is not None
-                           else f"Pos {a['rank']} (ERGO nicht live)")
-                    lines.append(f"- *{a['keyword']}* — {pos} — „{(a['headline'] or '(kein Titel)')[:90]}“")
-                    if a["description"]:
-                        lines.append(f"  {a['description'][:140]}")
-                    if a["url"]:
-                        lines.append(f"  Landingpage: {a['url']}")
-                lines.append("")
-
-    # Veraenderungen ggue. Vorlauf
-    lines.append("## Veraenderungen ggue. Vorlauf")
+    lines.append("## Trademark-Pruefkandidaten (Live-Anzeigen)")
     lines.append("")
-    any_prev = None
-    for cl in clusters:
-        new, gone, pr = delta_bidders(cur_rows, history, cl, current_run)
-        any_prev = pr
-        if pr is None:
-            lines.append(f"- **{cl}**: kein Vorlauf (Basislauf).")
-        else:
-            lines.append(f"- **{cl}**: NEU: {', '.join(new) if new else '–'} · "
-                         f"WEG: {', '.join(gone) if gone else '–'}")
-    lines.append("")
-
-    lines.append("## Trademark-Pruefkandidaten")
-    lines.append("")
-    lines.append("> Hinweis zur menschlichen/juristischen Pruefung – **keine** rechtliche "
-                 "Bewertung. Markenname \"ERGO\" steht im Anzeigentitel/-text.")
+    lines.append("> Hinweis zur menschlichen/juristischen Pruefung – **keine** rechtliche Bewertung.")
     lines.append("")
     if tm:
-        rows = [[r["advertiser_name"] or r["advertiser_domain"], r["cluster"],
-                 r["keyword"], (r.get("headline") or "")[:80]] for r in tm]
-        lines.append(md_table(["Bieter", "Cluster", "Keyword", "Anzeigentitel"], rows))
+        rows = [[r["advertiser_domain"], r["cluster"], r["keyword"],
+                 (r.get("headline") or "")[:80]] for r in tm]
+        lines.append(md_table(["Domain", "Cluster", "Keyword", "Anzeigentitel"], rows))
     else:
         lines.append("*Keine Live-Anzeige mit Markenname im Text.*")
     lines.append("")
-
     lines.append("---")
     lines.append(f"*Automatisch erzeugt am {dt.date.today().isoformat()}. "
-                 f"Scoring: 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*")
+                 f"Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*")
 
     out_path = f"ERGO_Brand_Bidding_{current_week}.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
-
-    summary = build_summary(current_week, n_adv, n_serp, tm, cluster_scores, n_added)
-    return out_path, summary
+    return out_path, build_summary(current_week, n_live_comp, n_live, n_names, tm, live_scores, n_added)
 
 
-def build_summary(week, n_adv, n_serp, tm, cluster_scores, n_added):
+def build_summary(week, n_live_comp, n_live, n_names, tm, live_scores, n_added):
     tops = []
-    for cl, scored in cluster_scores.items():
+    for cl, scored in live_scores.items():
         comp = [s for s in scored if not s["is_ergo"]]
         if comp:
             tops.append(f"{cl}: {comp[0]['name'] or comp[0]['domain']} ({comp[0]['score']})")
     return "\n".join([
-        f"ERGO Brand Bidding {week}: {n_adv} Bieter (Transparency), {n_serp} Live-Anzeigen.",
+        f"ERGO Brand Bidding {week}: {n_live_comp} Live-Wettbewerber, {n_live} Live-Anzeigen "
+        f"(Namensraum/Ad-Transparency: {n_names}).",
         f"{n_added} neue Zeilen in der Historie.",
-        ("Top-Wettbewerber je Cluster: " + " · ".join(tops) + "."
-         if tops else "Keine Wettbewerber erfasst."),
-        f"Trademark-Pruefkandidaten: {len(tm)} (Hinweis, keine rechtl. Bewertung).",
+        ("Top Live-Bieter je Cluster: " + " · ".join(tops) + "."
+         if tops else "Keine Live-Wettbewerber-Anzeigen in diesem Lauf."),
+        f"Trademark-Pruefkandidaten (Live): {len(tm)} (Hinweis, keine rechtl. Bewertung).",
         f"Report: ERGO_Brand_Bidding_{week}.md",
     ])
 

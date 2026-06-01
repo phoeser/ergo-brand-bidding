@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""ERGO Brand Bidding - HTML-Dashboard-Generator (Standardlib-only).
+"""ERGO Brand Bidding - HTML-Dashboard (Standardlib-only).
 
-Snapshot (letzter Lauf) + Zeitreihen ueber ALLE Laeufe + ausklappbare
-Bieter mit Live-Anzeigentexten/Landingpages und Kreativ-Infos.
+HAUPTSIGNAL: Live-Bieter (echtes Brand-Bidding) + Zeitreihen ueber alle Laeufe.
+ZUSATZ:      Markenraum / Namensvettern (Ad Transparency, kein Bidding-Nachweis).
 """
 
 import os
@@ -26,39 +26,31 @@ def build_data():
     current_week = cur_rows[0]["iso_week"]
     run_date = cur_rows[0].get("run_date", "")
     provider = cur_rows[0].get("provider", "")
-    clusters = list(dict.fromkeys(r["cluster"] for r in cur_rows
-                                  if r.get("source") == "adv")) or \
-        list(dict.fromkeys(r["cluster"] for r in cur_rows))
+    clusters = list(dict.fromkeys(r["cluster"] for r in cur_rows))
 
-    scores = {cl: br.score_cluster(cur_rows, history, cl, current_week, creatives)
-              for cl in clusters}
+    scores = {cl: br.live_bidders(cur_rows, history, cl, current_week) for cl in clusters}
+    namespace = {cl: [n for n in br.name_matches(cur_rows, cl, creatives) if not n["is_ergo"]][:25]
+                 for cl in clusters}
     delta = {}
     for cl in clusters:
-        new, gone, pr = br.delta_bidders(cur_rows, history, cl, current_run)
+        new, gone, pr = br.live_delta(cur_rows, history, cl, current_run)
         delta[cl] = {"prev_run": pr, "new": new, "gone": gone}
 
     tm = br.trademark_candidates(cur_rows)
-    trademark = [{"name": r.get("advertiser_name") or r.get("advertiser_domain"),
-                  "cluster": r["cluster"], "keyword": r["keyword"],
-                  "headline": (r.get("headline") or "")[:120]} for r in tm]
+    trademark = [{"domain": r.get("advertiser_domain"), "cluster": r["cluster"],
+                  "keyword": r["keyword"], "headline": (r.get("headline") or "")[:120]} for r in tm]
 
-    n_adv = len({r["advertiser_key"] for r in cur_rows
-                 if r.get("source") == "adv" and r["advertiser_key"]})
-    n_serp = sum(1 for r in cur_rows if r.get("source") == "serp")
+    n_live = sum(1 for r in cur_rows if r.get("source") == "serp")
+    n_live_comp = len({r["advertiser_domain"] for r in cur_rows
+                       if r.get("source") == "serp" and r["advertiser_domain"] and not br.is_ergo(r)})
 
     return {
-        "generated": dt.date.today().isoformat(),
-        "current_week": current_week,
-        "run_date": run_date,
-        "current_run": current_run,
-        "provider": provider,
+        "generated": dt.date.today().isoformat(), "current_week": current_week,
+        "run_date": run_date, "current_run": current_run, "provider": provider,
         "routine_url": ROUTINE_URL,
-        "kpis": {"bidders": n_adv, "live_ads": n_serp, "trademark": len(trademark)},
-        "clusters": clusters,
-        "scores": scores,
-        "delta": delta,
-        "trademark": trademark,
-        "ts": br.time_series(history),
+        "kpis": {"live_comp": n_live_comp, "live_ads": n_live, "trademark": len(trademark)},
+        "clusters": clusters, "scores": scores, "namespace": namespace,
+        "delta": delta, "trademark": trademark, "ts": br.time_series(history),
     }
 
 
@@ -90,9 +82,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .kpi .n{font-size:26px;font-weight:700;}
   .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
-  .card h2{font-size:15px;margin:0 0 12px;}
+  .card h2{font-size:15px;margin:0 0 4px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
   .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--ink);}
   .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -104,7 +96,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .vbadge{display:inline-block;background:#e7f0fd;color:#2563eb;border-radius:6px;padding:1px 6px;font-size:10px;margin-left:6px;}
   .delta{font-size:13px;color:var(--muted);margin-top:6px;}
   .new{color:#15803d;} .gone{color:#b91c1c;}
-  .note{color:var(--muted);font-size:12px;margin-top:8px;}
+  .note{color:var(--muted);font-size:12px;margin:2px 0 8px;}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px;}
   canvas{max-height:300px;}
   tr.bid{cursor:pointer;}
   tr.bid:hover{background:#faf7f8;}
@@ -133,158 +126,172 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
   <div class="kpis" id="kpis"></div>
 
-  <div class="card">
-    <h2>Intensitaet je Cluster (letzter Lauf)</h2>
-    <div class="tabs" id="tabs"></div>
-    <canvas id="barChart"></canvas>
-    <div class="delta" id="delta"></div>
-  </div>
+  <div class="tabs" id="tabs"></div>
 
   <div class="card">
-    <h2>Top-Bieter <span id="clName"></span></h2>
-    <div class="note">Zeile anklicken: Live-Anzeigentexte, Landingpages &amp; Kreativ-Infos. &bdquo;Ueber ERGO&ldquo; = Anteil gemeinsamer Keywords, in denen der Bieter ueber ERGO rankt. &bdquo;~Ads&ldquo; = ungefaehre Zahl laufender Anzeigen (Transparency).</div>
+    <h2>Live-Bieter <span id="clName"></span> &mdash; echtes Brand-Bidding</h2>
+    <div class="note">Wer taucht bei der Google-Suche wirklich als Anzeige auf. Zeile anklicken: Anzeigentext, Landingpage &amp; Position. &bdquo;Ueber ERGO&ldquo; = Anteil gemeinsamer Keywords, in denen der Bieter ueber der ERGO-Anzeige steht.</div>
+    <canvas id="barChart"></canvas>
+    <div class="delta" id="delta"></div>
     <table id="bidTable"><thead><tr>
-      <th></th><th>#</th><th>Bieter</th><th class="num">Score</th><th class="num">Praesenz</th>
-      <th class="num">Best-Rang</th><th>Ueber ERGO</th><th class="num">~Ads</th><th>Persistenz</th>
+      <th></th><th>#</th><th>Domain</th><th class="num">Score</th><th class="num">Praesenz</th>
+      <th class="num">Best-Pos</th><th>Ueber ERGO</th><th>Persistenz</th>
     </tr></thead><tbody></tbody></table>
+    <div class="note" id="liveEmpty"></div>
   </div>
 
   <h2 style="font-size:16px;margin:24px 0 10px">Zeitreihen ueber die Laeufe</h2>
   <div class="grid2">
-    <div class="card"><h2>Bieterdichte je Cluster</h2><canvas id="tsDensity"></canvas></div>
-    <div class="card"><h2>ERGO-Sichtbarkeit</h2><canvas id="tsErgo"></canvas></div>
-    <div class="card"><h2>Top-Wettbewerber-Intensitaet</h2><canvas id="tsBidder"></canvas></div>
-    <div class="card"><h2>Trademark-Treffer</h2><canvas id="tsTm"></canvas></div>
+    <div class="card"><h2>Live-Bieterdichte je Cluster</h2><canvas id="tsDensity"></canvas></div>
+    <div class="card"><h2>ERGO-Sichtbarkeit (live)</h2><canvas id="tsErgo"></canvas></div>
+    <div class="card"><h2>Top-Live-Bieter-Intensitaet</h2><canvas id="tsBidder"></canvas></div>
+    <div class="card"><h2>Trademark-Treffer (live)</h2><canvas id="tsTm"></canvas></div>
   </div>
 
   <div class="card">
-    <h2>Trademark-Pruefkandidaten (letzter Lauf)</h2>
+    <h2>Markenraum / Namensvettern <span id="clName2"></span></h2>
+    <div class="warn">Werbetreibende mit passendem <b>Namen</b> aus dem Google-Ads-Transparency-Center. Das ist <b>kein</b> Nachweis von Brand-Bidding auf ERGO-Suchbegriffe &mdash; nur ein Marken-/Namensraum-Ueberblick. Zeile anklicken fuer Kreativ-Infos.</div>
+    <table id="nsTable"><thead><tr>
+      <th></th><th>Werbetreibender</th><th class="num">~Ads</th><th>verifiziert</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="note" id="nsEmpty"></div>
+  </div>
+
+  <div class="card">
+    <h2>Trademark-Pruefkandidaten (Live-Anzeigen)</h2>
     <div class="note">Hinweis zur menschlichen/juristischen Pruefung - keine rechtliche Bewertung.</div>
     <table id="tmTable"><thead><tr>
-      <th>Bieter</th><th>Cluster</th><th>Keyword</th><th>Anzeigentitel</th>
+      <th>Domain</th><th>Cluster</th><th>Keyword</th><th>Anzeigentitel</th>
     </tr></thead><tbody></tbody></table>
   </div>
-  <div class="note">Automatisch erzeugt am <span id="gen"></span> - Quellen: Ads Advertisers (Abdeckung) + Live-SERP (Texte/Landingpages/Position) + ads_search (Kreative). Scoring: 0,5 Praesenz + 0,3 Position + 0,2 Persistenz (x100).</div>
+  <div class="note">Automatisch erzeugt am <span id="gen"></span> - Hauptsignal: Live-Suche (Paid-Block). Zusatz: Ad-Transparency-Namensraum. Scoring: 0,5 Praesenz + 0,3 Position + 0,2 Persistenz (x100).</div>
 </div>
 <script>
 const DATA = __DATA__;
 let current = DATA.clusters[0];
 let barChart;
-function escapeHtml(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function esc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmtAbove(r){
   if(r.is_ergo) return '–';
   if(r.common_n) return r.above_ergo_n+'/'+r.common_n+' ('+Math.round(r.above_ergo_pct)+'%)';
   return '–';
 }
 function fmtRun(ts){ return (ts||'').replace('T',' ').slice(5,16); }
-function adDetail(r){
-  var h='<div class="addet">';
-  if(r.live_ads && r.live_ads.length){
-    h += r.live_ads.map(function(a){
-      var er = (a.ergo_rank==null) ? 'ERGO nicht live' : ('ERGO Pos '+a.ergo_rank);
-      var above = a.above_ergo ? '<span class="ab">ueber ERGO</span>' : '';
-      var link = a.url ? '<div class="adl"><a href="'+escapeHtml(a.url)+'" target="_blank" rel="noopener">Landingpage ↗</a></div>' : '';
-      return '<div class="adrow"><div class="adkw">'+escapeHtml(a.keyword)+' · Pos '+a.rank+' ('+er+') '+above+'</div>'
-        + '<div class="adh">'+escapeHtml(a.headline||'(kein Titel)')+'</div>'
-        + (a.description?'<div class="add">'+escapeHtml(a.description)+'</div>':'') + link + '</div>';
-    }).join('');
-  } else {
-    h += '<div class="adkw">Keine Live-Anzeige im letzten Lauf erfasst.</div>';
-  }
-  var c = r.creatives;
-  if(c){
-    var act = (c.first_shown||c.last_shown) ? ('aktiv '+escapeHtml((c.first_shown||'').slice(0,10))+' – '+escapeHtml((c.last_shown||'').slice(0,10))) : '';
-    h += '<div class="cre"><b>Kreative (Ads Transparency):</b> '+(c.n||0)+' Anzeige(n)'
-      + (c.formats?' · Formate: '+escapeHtml(c.formats):'') + (act?' · '+act:'')
-      + (c.transparency?' · <a href="'+escapeHtml(c.transparency)+'" target="_blank" rel="noopener">in Google Ads Transparency ansehen ↗</a>':'')
-      + (c.preview?'<img src="'+escapeHtml(c.preview)+'" alt="Anzeigen-Vorschau">':'') + '</div>';
-  }
-  return h + '</div>';
+function liveDetail(r){
+  if(!r.ads || !r.ads.length) return '<div class="addet"><div class="adkw">Keine Anzeigendetails.</div></div>';
+  return '<div class="addet">'+r.ads.map(function(a){
+    var er=(a.ergo_rank==null)?'ERGO nicht live':('ERGO Pos '+a.ergo_rank);
+    var ab=a.above_ergo?'<span class="ab">ueber ERGO</span>':'';
+    var link=a.url?'<div class="adl"><a href="'+esc(a.url)+'" target="_blank" rel="noopener">Landingpage ↗</a></div>':'';
+    return '<div class="adrow"><div class="adkw">'+esc(a.keyword)+' · Pos '+a.rank+' ('+er+') '+ab+'</div>'
+      +'<div class="adh">'+esc(a.headline||'(kein Titel)')+'</div>'
+      +(a.description?'<div class="add">'+esc(a.description)+'</div>':'')+link+'</div>';
+  }).join('')+'</div>';
 }
-document.getElementById('sub').textContent = 'Stand: ' + DATA.current_week + ' - Lauf ' + fmtRun(DATA.current_run) + ' - Provider ' + DATA.provider;
-document.getElementById('gen').textContent = DATA.generated;
-document.getElementById('runBtn').href = DATA.routine_url;
-var kpiDefs = [['bidders','Bieter (Transparency)'],['live_ads','Live-Anzeigen'],['trademark','Trademark-Kandidaten']];
-document.getElementById('kpis').innerHTML = kpiDefs.map(function(k){
+function nsDetail(n){
+  var c=n.creatives, h='<div class="addet">';
+  h+='<div class="adkw">Keywords: '+esc((n.keywords||[]).join(', '))+'</div>';
+  if(c){
+    var act=(c.first_shown||c.last_shown)?('aktiv '+esc((c.first_shown||'').slice(0,10))+' – '+esc((c.last_shown||'').slice(0,10))):'';
+    h+='<div class="cre"><b>Kreative (Ad Transparency):</b> '+(c.n||0)+' Anzeige(n)'
+      +(c.formats?' · Formate: '+esc(c.formats):'')+(act?' · '+act:'')
+      +(c.transparency?' · <a href="'+esc(c.transparency)+'" target="_blank" rel="noopener">in Google Ads Transparency ansehen ↗</a>':'')
+      +(c.preview?'<img src="'+esc(c.preview)+'" alt="Vorschau">':'')+'</div>';
+  } else { h+='<div class="adkw">Keine Kreativ-Details abgerufen.</div>'; }
+  return h+'</div>';
+}
+document.getElementById('sub').textContent='Stand: '+DATA.current_week+' - Lauf '+fmtRun(DATA.current_run)+' - Provider '+DATA.provider;
+document.getElementById('gen').textContent=DATA.generated;
+document.getElementById('runBtn').href=DATA.routine_url;
+var kpiDefs=[['live_comp','Live-Wettbewerber'],['live_ads','Live-Anzeigen'],['trademark','Trademark-Kandidaten']];
+document.getElementById('kpis').innerHTML=kpiDefs.map(function(k){
   return '<div class="kpi"><div class="n">'+DATA.kpis[k[0]]+'</div><div class="l">'+k[1]+'</div></div>';
 }).join('');
-document.getElementById('tabs').innerHTML = DATA.clusters.map(function(c){
-  return '<button class="tab" data-c="'+escapeHtml(c)+'">'+escapeHtml(c)+'</button>';
+document.getElementById('tabs').innerHTML=DATA.clusters.map(function(c){
+  return '<button class="tab" data-c="'+esc(c)+'">'+esc(c)+'</button>';
 }).join('');
-Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
-  b.addEventListener('click', function(){ current = b.dataset.c; render(); });
+Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(b){
+  b.addEventListener('click',function(){current=b.dataset.c; render();});
 });
-function render(){
-  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b){
-    b.classList.toggle('active', b.dataset.c === current);
-  });
-  document.getElementById('clName').textContent = '- ' + current;
-  var rows = (DATA.scores[current]||[]).slice(0,20);
-  var barRows = rows.slice(0,12);
-  var labels = barRows.map(function(r){return r.name||r.domain;});
-  var vals = barRows.map(function(r){return r.score;});
-  var colors = barRows.map(function(r){return r.is_ergo ? '#9aa0a6' : '#c8102e';});
-  if(barChart) barChart.destroy();
-  barChart = new Chart(document.getElementById('barChart'), {
-    type:'bar',
-    data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:4}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,title:{display:true,text:'Score'}}}}
-  });
-  var d = DATA.delta[current] || {};
-  document.getElementById('delta').innerHTML = d.prev_run
-    ? '<b>vs Vorlauf</b> - <span class="new">NEU: '+(d.new.length?d.new.join(', '):'-')+'</span> - <span class="gone">WEG: '+(d.gone.length?d.gone.join(', '):'-')+'</span>'
-    : 'Kein Vorlauf (Basislauf).';
-  var tb = document.querySelector('#bidTable tbody');
-  tb.innerHTML = rows.map(function(r,i){
-    var nm = escapeHtml(r.name||r.domain) + (r.is_ergo?'<span class="badge">ERGO</span>':'') + (r.verified?'<span class="vbadge">verifiziert</span>':'');
-    var main = '<tr class="bid"><td class="exp">&#9656;</td><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+nm+'</td>'
-      + '<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'
-      + '<td class="num">'+r.best_rank+'</td><td>'+fmtAbove(r)+'</td><td class="num">'+(r.approx_ads||'–')+'</td><td>'+r.persistence_wk+'</td></tr>';
-    var det = '<tr class="det" style="display:none"><td colspan="9">'+adDetail(r)+'</td></tr>';
-    return main+det;
-  }).join('');
-  Array.prototype.forEach.call(document.querySelectorAll('#bidTable tbody tr.bid'), function(tr){
-    tr.addEventListener('click', function(){
-      var dd = tr.nextElementSibling, open = dd.style.display==='none';
-      dd.style.display = open?'table-row':'none';
-      tr.querySelector('.exp').innerHTML = open?'&#9662;':'&#9656;';
+function expandify(sel, detailFn, colspan){
+  Array.prototype.forEach.call(document.querySelectorAll(sel+' tbody tr.bid'),function(tr){
+    tr.addEventListener('click',function(){
+      var dd=tr.nextElementSibling, open=dd.style.display==='none';
+      dd.style.display=open?'table-row':'none';
+      tr.querySelector('.exp').innerHTML=open?'&#9662;':'&#9656;';
     });
   });
 }
-function lineChart(id, labels, datasets, yTitle){
-  return new Chart(document.getElementById(id), {
-    type:'line',
-    data:{labels:labels, datasets:datasets},
-    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},
-      scales:{y:{beginAtZero:true,title:{display:true,text:yTitle}}},
-      elements:{point:{radius:2}}}
+function render(){
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(b){
+    b.classList.toggle('active',b.dataset.c===current);
   });
+  document.getElementById('clName').textContent='- '+current;
+  document.getElementById('clName2').textContent='- '+current;
+  var rows=(DATA.scores[current]||[]);
+  var comp=rows.filter(function(r){return !r.is_ergo;});
+  // Bar
+  var barRows=rows.slice(0,12);
+  if(barChart) barChart.destroy();
+  barChart=new Chart(document.getElementById('barChart'),{
+    type:'bar',
+    data:{labels:barRows.map(function(r){return r.name||r.domain;}),
+      datasets:[{data:barRows.map(function(r){return r.score;}),
+        backgroundColor:barRows.map(function(r){return r.is_ergo?'#9aa0a6':'#c8102e';}),borderRadius:4}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,title:{display:true,text:'Score'}}}}
+  });
+  var d=DATA.delta[current]||{};
+  document.getElementById('delta').innerHTML=d.prev_run
+    ?'<b>vs Vorlauf</b> - <span class="new">NEU: '+(d.new.length?d.new.join(', '):'-')+'</span> - <span class="gone">WEG: '+(d.gone.length?d.gone.join(', '):'-')+'</span>'
+    :'Kein Vorlauf (Basislauf).';
+  var tb=document.querySelector('#bidTable tbody');
+  tb.innerHTML=rows.map(function(r){return '';}).join('');
+  if(rows.length){
+    tb.innerHTML=rows.map(function(r,i){
+      var nm=esc(r.name||r.domain)+(r.is_ergo?'<span class="badge">ERGO</span>':'');
+      var main='<tr class="bid"><td class="exp">&#9656;</td><td>'+(i+1)+'</td><td class="'+(r.is_ergo?'ergo':'')+'">'+nm+'</td>'
+        +'<td class="num">'+r.score+'</td><td class="num">'+Math.round(r.presence_pct)+'%</td>'
+        +'<td class="num">'+r.best_rank+'</td><td>'+fmtAbove(r)+'</td><td>'+r.persistence_wk+'</td></tr>';
+      return main+'<tr class="det" style="display:none"><td colspan="8">'+liveDetail(r)+'</td></tr>';
+    }).join('');
+    document.getElementById('liveEmpty').textContent='';
+  } else {
+    document.getElementById('liveEmpty').textContent='In diesem Lauf wurden keine Live-Textanzeigen erfasst (Google zeigt aktuell wenige klassische Textanzeigen auf diese Begriffe).';
+  }
+  expandify('#bidTable');
+  // Namensraum
+  var ns=DATA.namespace[current]||[];
+  var nt=document.querySelector('#nsTable tbody');
+  nt.innerHTML=ns.map(function(n){
+    var main='<tr class="bid"><td class="exp">&#9656;</td><td>'+esc(n.name)+(n.verified?'<span class="vbadge">verifiziert</span>':'')+'</td>'
+      +'<td class="num">'+(n.approx_ads||'–')+'</td><td>'+(n.verified?'ja':'–')+'</td></tr>';
+    return main+'<tr class="det" style="display:none"><td colspan="4">'+nsDetail(n)+'</td></tr>';
+  }).join('');
+  document.getElementById('nsEmpty').textContent=ns.length?'':'Keine Namens-Treffer.';
+  expandify('#nsTable');
+}
+function lineChart(id,labels,ds,yTitle){
+  return new Chart(document.getElementById(id),{type:'line',data:{labels:labels,datasets:ds},
+    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{y:{beginAtZero:true,title:{display:true,text:yTitle}}},elements:{point:{radius:2}}}});
 }
 function renderTS(){
-  var ts = DATA.ts; var labels = ts.runs.map(fmtRun);
-  var pal = ['#c8102e','#2563eb','#15803d','#d97706','#7c3aed','#0891b2'];
-  lineChart('tsDensity', labels, ts.clusters.map(function(c,i){
+  var ts=DATA.ts, labels=ts.runs.map(fmtRun), pal=['#c8102e','#2563eb','#15803d','#d97706','#7c3aed','#0891b2'];
+  lineChart('tsDensity',labels,ts.clusters.map(function(c,i){
     return {label:c,data:ts.density[c],borderColor:pal[i%pal.length],backgroundColor:'transparent',tension:.25};
-  }), 'Wettbewerber');
-  lineChart('tsErgo', labels, [
-    {label:'% Keywords mit ERGO',data:ts.ergo_presence,borderColor:'#c8102e',backgroundColor:'transparent',tension:.25,yAxisID:'y'},
-    {label:'Ø ERGO-Rang',data:ts.ergo_avg_rank,borderColor:'#2563eb',backgroundColor:'transparent',tension:.25,spanGaps:true,yAxisID:'y1'}
-  ], '% sichtbar');
-  // zweite Achse fuer ERGO-Rang
-  if(window.Chart){ var ec = Chart.getChart('tsErgo'); if(ec){ ec.options.scales.y1={position:'right',beginAtZero:true,reverse:true,title:{display:true,text:'Ø Rang'},grid:{drawOnChartArea:false}}; ec.update(); } }
-  var bk = Object.keys(ts.bidder_intensity);
-  lineChart('tsBidder', labels, bk.map(function(k,i){
+  }),'Live-Wettbewerber');
+  lineChart('tsErgo',labels,[{label:'% Keywords mit ERGO-Anzeige',data:ts.ergo_presence,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}],'% sichtbar');
+  var bk=Object.keys(ts.bidder_intensity);
+  lineChart('tsBidder',labels,bk.map(function(k,i){
     return {label:(ts.bidder_names[k]||k),data:ts.bidder_intensity[k],borderColor:pal[i%pal.length],backgroundColor:'transparent',tension:.25};
-  }), 'Intensitaet');
-  lineChart('tsTm', labels, [
-    {label:'Trademark-Treffer',data:ts.trademark,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}
-  ], 'Treffer');
+  }),'Intensitaet');
+  lineChart('tsTm',labels,[{label:'Trademark-Treffer',data:ts.trademark,borderColor:'#c8102e',backgroundColor:'rgba(200,16,46,.08)',fill:true,tension:.25}],'Treffer');
 }
 function renderTM(){
-  var tb = document.querySelector('#tmTable tbody');
-  if(!DATA.trademark.length){ tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>'; return; }
-  tb.innerHTML = DATA.trademark.map(function(r){
-    return '<tr><td>'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.cluster)+'</td><td>'+escapeHtml(r.keyword)+'</td><td>'+escapeHtml(r.headline)+'</td></tr>';
+  var tb=document.querySelector('#tmTable tbody');
+  if(!DATA.trademark.length){tb.innerHTML='<tr><td colspan="4">Keine Treffer.</td></tr>';return;}
+  tb.innerHTML=DATA.trademark.map(function(r){
+    return '<tr><td>'+esc(r.domain)+'</td><td>'+esc(r.cluster)+'</td><td>'+esc(r.keyword)+'</td><td>'+esc(r.headline)+'</td></tr>';
   }).join('');
 }
 render(); renderTS(); renderTM();

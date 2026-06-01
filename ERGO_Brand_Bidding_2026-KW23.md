@@ -1,67 +1,84 @@
 # ERGO Brand Bidding – 2026-KW23
 
-*Lauf: 2026-06-01 (2026-06-01T07:52:01+00:00) · Provider: dataforseo · Bieter (Transparency): 39 · Live-Anzeigen: 2 · Trademark-Pruefkandidaten: 0*
+*Lauf: 2026-06-01 (2026-06-01T07:52:01+00:00) · Provider: dataforseo · Live-Wettbewerber: 2 · Live-Anzeigen: 2 · Namensraum (Ad Transparency): 39 · Trademark: 0*
 
-> Datenquellen: **Ads Advertisers** (vollstaendige Bieterliste) · **Live-SERP** (echte Anzeigentexte/Landingpages/Position) · **ads_search** (Kreativ-Infos je Anbieter).
+> **Hauptsignal = Live-Suche** (echtes Brand-Bidding: Text, Landingpage, Position). Der Namensraum-Abschnitt listet nur Werbetreibende mit passendem Namen aus dem Ad-Transparency-Center – das ist **kein** Nachweis von Brand-Bidding.
 
-## Marke allgemein – Top-20 Bieter
+## Marke allgemein – Live-Bieter (echtes Brand-Bidding)
 
-| # | Bieter | Score | Praesenz | Best-Rang | Ueber ERGO | ~Ads | Persistenz |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | ERGO Versicherung / Deutsche Krankenversicherung Magdalena Pöhler (ERGO) | 67.5 | 50% | 1 | – | 5 | 1/1 |
-| 2 | Ergoneers (ERGO) | 62.5 | 25% | 1 | – | 17 | 1/1 |
-| 3 | ergo.de (ERGO) | 62.5 | 25% | 1 | – | – | 1/1 |
-| 4 | ERGO Versicherung Aktiengesellschaft (ERGO) | 62.5 | 25% | 1 | – | 13 | 1/1 |
-| 5 | ERGO Direkt AG (ERGO) | 62.5 | 25% | 1 | – | 2006 | 1/1 |
-| 6 | Ergo Flex (ERGO) | 47.5 | 25% | 2 | – | 7 | 1/1 |
-| 7 | ergo.lv (ERGO) | 47.5 | 25% | 2 | – | – | 1/1 |
-| 8 | Ergonline (ERGO) | 42.5 | 25% | 3 | – | 7 | 1/1 |
-| 9 | ergo.ee (ERGO) | 42.5 | 25% | 3 | – | – | 1/1 |
-| 10 | Ergo Versicherung (ERGO) | 42.5 | 25% | 3 | – | 3 | 1/1 |
-| 11 | Ergo-Lab (ERGO) | 40.0 | 25% | 4 | – | 5 | 1/1 |
-| 12 | ergo.lt (ERGO) | 40.0 | 25% | 4 | – | – | 1/1 |
-| 13 | Ergo Versicherungsbüro (ERGO) | 40.0 | 25% | 4 | – | 1 | 1/1 |
-| 14 | Ergoithub (ERGO) | 38.5 | 25% | 5 | – | 3 | 1/1 |
-| 15 | pergo.no | 38.5 | 25% | 5 | 0/1 (0%) | – | 1/1 |
-| 16 | ERGO Versicherung Amerkamp (ERGO) | 38.5 | 25% | 5 | – | 1 | 1/1 |
-| 17 | Ergostock (ERGO) | 37.5 | 25% | 6 | – | 3 | 1/1 |
-| 18 | ergo.com (ERGO) | 37.5 | 25% | 6 | – | – | 1/1 |
-| 19 | ERGO Versicherung Thomas Kildau (ERGO) | 37.5 | 25% | 6 | – | 1 | 1/1 |
-| 20 | ERGOMATIC (ERGO) | 36.8 | 25% | 7 | – | 3 | 1/1 |
+*Keine Live-Anzeigen in diesem Lauf erfasst.*
 
-## Zahnzusatz – Top-20 Bieter
+## Zahnzusatz – Live-Bieter (echtes Brand-Bidding)
 
-| # | Bieter | Score | Praesenz | Best-Rang | Ueber ERGO | ~Ads | Persistenz |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | zahnzusatzversicherung.care | 100.0 | 100% | 1 | – | – | 1/1 |
-| 2 | test-zahnzusatzversicherung.de | 85.0 | 100% | 2 | – | – | 1/1 |
-| 3 | zahnzusatzversicherung-direkt.de | 80.0 | 100% | 3 | – | – | 1/1 |
-| 4 | heynen-zahnzusatzversicherung.de | 77.5 | 100% | 4 | – | – | 1/1 |
-| 5 | zahnzusatzversicherung-kinder.ch | 76.0 | 100% | 5 | – | – | 1/1 |
-| 6 | zahnzusatzversicherung-experten.de | 75.0 | 100% | 6 | – | – | 1/1 |
-| 7 | zahnzusatzversicherungen-portal.de | 74.3 | 100% | 7 | – | – | 1/1 |
-| 8 | zahnzusatzversicherung-vergleich.net | 73.8 | 100% | 8 | – | – | 1/1 |
-| 9 | zahnzusatzversicherungen-vergleich.com | 73.3 | 100% | 9 | – | – | 1/1 |
+| # | Domain | Score | Praesenz | Best-Pos | Ueber ERGO | Persistenz |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Münchener Verein | 100.0 | 100% | 1 | – | 1/1 |
 
-## Sterbegeld – Top-20 Bieter
+**Münchener Verein** — Ueber ERGO: –
+- *zahnzusatzversicherung ohne wartezeit* — Pos 1 (ERGO nicht live) — „Beste Zahnzusatzversicherung | Ohne Wartezeit | Jetzt mehr erfahren“
+  Zahnzusatzversicherung ohne Wartezeit - Implantate, Kronen, Brücken, Zahnreinigung, uvm. 100% Kostenerstattung, 100% Zufriedenheit, 100...
+  Landingpage: https://www.muenchener-verein.de/privatkunden/gesundheit/zahnzusatzversicherung/
 
-| # | Bieter | Score | Praesenz | Best-Rang | Ueber ERGO | ~Ads | Persistenz |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Vorsorgekasse Hoesch Dortmund Sterbegeldversicherung VVaG | 100.0 | 100% | 1 | – | 69 | 1/1 |
-| 2 | sterbegeldversicherung-2022.com | 100.0 | 100% | 1 | – | – | 1/1 |
-| 3 | Solidar Versicherungsgemeinschaft Sterbegeldversicherung VVaG | 85.0 | 100% | 2 | – | 48 | 1/1 |
+## Sterbegeld – Live-Bieter (echtes Brand-Bidding)
 
-## Veraenderungen ggue. Vorlauf
+| # | Domain | Score | Praesenz | Best-Pos | Ueber ERGO | Persistenz |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | CHECK24 | 100.0 | 100% | 1 | – | 1/1 |
 
-- **Marke allgemein**: kein Vorlauf (Basislauf).
-- **Zahnzusatz**: kein Vorlauf (Basislauf).
-- **Sterbegeld**: kein Vorlauf (Basislauf).
+**CHECK24** — Ueber ERGO: –
+- *sterbegeldversicherung test* — Pos 1 (ERGO nicht live) — „Sterbegeldversicherung im Test - Stiftung Warentest Testsieger“
+  CHECK24: Über 60 Tarife der besten Anbieter vergleichen und bereits ab 2,79€/M vorsorgen.
+  Landingpage: https://www.check24.de/sterbegeldversicherung/lp/vergleichen/bis-zu-50-prozent-sparen/
 
-## Trademark-Pruefkandidaten
+## Markenraum / Namensvettern (Ad Transparency – kein Brand-Bidding-Nachweis)
 
-> Hinweis zur menschlichen/juristischen Pruefung – **keine** rechtliche Bewertung. Markenname "ERGO" steht im Anzeigentitel/-text.
+**Marke allgemein** (15 Werbetreibende mit passendem Namen):
+
+| Werbetreibender | ~Ads | verifiziert |
+| --- | --- | --- |
+| Ergoneers | 17 | ja |
+| Ergo Flex | 7 | ja |
+| Ergonline | 7 | ja |
+| Ergo-Lab | 5 | ja |
+| Ergoithub | 3 | – |
+| Ergostock | 3 | – |
+| ERGOMATIC | 3 | ja |
+| Ergohome | 2 | ja |
+| Ergodyne | 1 | ja |
+| ERGONO3D | 1 | ja |
+| ergo.lv | – | – |
+| ergo.ee | – | – |
+| ergo.lt | – | – |
+| pergo.no | – | – |
+| ergo.com | – | – |
+
+**Zahnzusatz** (9 Werbetreibende mit passendem Namen):
+
+| Werbetreibender | ~Ads | verifiziert |
+| --- | --- | --- |
+| zahnzusatzversicherung.care | – | – |
+| test-zahnzusatzversicherung.de | – | – |
+| zahnzusatzversicherung-direkt.de | – | – |
+| heynen-zahnzusatzversicherung.de | – | – |
+| zahnzusatzversicherung-kinder.ch | – | – |
+| zahnzusatzversicherung-experten.de | – | – |
+| zahnzusatzversicherungen-portal.de | – | – |
+| zahnzusatzversicherung-vergleich.net | – | – |
+| zahnzusatzversicherungen-vergleich.com | – | – |
+
+**Sterbegeld** (3 Werbetreibende mit passendem Namen):
+
+| Werbetreibender | ~Ads | verifiziert |
+| --- | --- | --- |
+| Vorsorgekasse Hoesch Dortmund Sterbegeldversicherung VVaG | 69 | ja |
+| Solidar Versicherungsgemeinschaft Sterbegeldversicherung VVaG | 48 | ja |
+| sterbegeldversicherung-2022.com | – | – |
+
+## Trademark-Pruefkandidaten (Live-Anzeigen)
+
+> Hinweis zur menschlichen/juristischen Pruefung – **keine** rechtliche Bewertung.
 
 *Keine Live-Anzeige mit Markenname im Text.*
 
 ---
-*Automatisch erzeugt am 2026-06-01. Scoring: 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
+*Automatisch erzeugt am 2026-06-01. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*

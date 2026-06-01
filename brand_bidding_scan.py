@@ -48,8 +48,9 @@ _load_local_env()
 # --- Konfiguration -------------------------------------------------------
 
 KEYWORD_CLUSTERS = {
-    "Marke allgemein": ["ergo", "ergo versicherung", "ergo login", "ergo kundenportal",
-                        "ergo direkt", "ergo krankenversicherung", "ergo rechtsschutz"],
+    "Marke allgemein": ["ergo versicherung", "ergo login", "ergo kundenportal",
+                        "ergo direkt", "ergo krankenversicherung", "ergo rechtsschutz",
+                        "ergo zahnversicherung"],
     "Zahnzusatz": ["ergo zahnzusatzversicherung", "ergo zahnzusatz", "zahnzusatzversicherung ergo",
                    "zahnzusatzversicherung", "zahnzusatzversicherung vergleich", "zahnzusatzversicherung test",
                    "beste zahnzusatzversicherung", "zahnzusatzversicherung ohne wartezeit"],
