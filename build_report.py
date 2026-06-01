@@ -253,11 +253,23 @@ def _fmt_above(s):
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
     if not week_rows:
-        raise SystemExit(f"{week_csv} enthaelt keine Zeilen.")
-    current_week = week_rows[0]["iso_week"]
-    run_date = week_rows[0]["run_date"]
-    provider = week_rows[0]["provider"]
-    clusters = list(dict.fromkeys(r["cluster"] for r in week_rows))
+        # Kein Ad gefunden – Metadaten aus Dateinamen + Systemdatum ableiten
+        import re
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", week_csv)
+        if m:
+            run_date = m.group(1)
+            d = dt.date.fromisoformat(run_date)
+        else:
+            d = dt.date.today()
+            run_date = d.isoformat()
+        current_week = f"{d.isocalendar()[0]}-W{d.isocalendar()[1]:02d}"
+        provider = "dataforseo"
+        clusters = []
+    else:
+        current_week = week_rows[0]["iso_week"]
+        run_date = week_rows[0]["run_date"]
+        provider = week_rows[0]["provider"]
+        clusters = list(dict.fromkeys(r["cluster"] for r in week_rows))
 
     history, n_added = append_history(week_rows)
 
@@ -272,6 +284,10 @@ def build_report(week_csv):
                  f"Anzeigen-Treffer: {n_ads} · Unique Advertiser: {n_adv} · "
                  f"Trademark-Pruefkandidaten: {len(tm)}*")
     lines.append("")
+    if n_ads == 0:
+        lines.append("> **Kein Bieter aktiv:** Der Scan fand heute keine bezahlten Anzeigen "
+                     "auf den ueberwachten Keywords. Kein Handlungsbedarf.")
+        lines.append("")
 
     # (a) Top-5 je Cluster
     cluster_scores = {}
@@ -365,6 +381,11 @@ def build_report(week_csv):
 
 def auto_highlights(week_rows, cluster_scores, tm, pw, history, current_week):
     out = []
+    if not week_rows:
+        out.append("Scan ergab **0 Anzeigen-Treffer** – kein Wettbewerber aktiv auf den ueberwachten Keywords.")
+        if not tm:
+            out.append("Keine Anzeige mit Markenname \"ERGO\" im Text.")
+        return out[:3]
     # Aggressivster Wettbewerber gesamt
     best = None
     for cl, scored in cluster_scores.items():
