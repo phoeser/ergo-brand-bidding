@@ -1,6 +1,6 @@
 # ERGO Brand Bidding – 2026-KW23
 
-*Lauf: 2026-06-03 (2026-06-03T03:09:58+00:00) · Provider: dataforseo · Live-Wettbewerber: 1 · Live-Anzeigen: 1 · Namensraum (Ad Transparency): 19 · Trademark: 0*
+*Lauf: 2026-06-04 (2026-06-04T03:09:52+00:00) · Provider: dataforseo · Live-Wettbewerber: 1 · Live-Anzeigen: 1 · Namensraum (Ad Transparency): 19 · Trademark: 0*
 
 > **Hauptsignal = Live-Suche** (echtes Brand-Bidding: Text, Landingpage, Position). Der Namensraum-Abschnitt listet nur Werbetreibende mit passendem Namen aus dem Ad-Transparency-Center – das ist **kein** Nachweis von Brand-Bidding.
 
@@ -19,8 +19,8 @@
 | 1 | CHECK24 | 100.0 | 100% | 1 | – | 1/1 |
 
 **CHECK24** — Ueber ERGO: –
-- *sterbegeldversicherung vergleich* — Pos 1 (ERGO nicht live) — „CHECK24 Sterbegeldversicherung - Testsieger im Vergleich 2026“
-  CHECK24: Über 60 Tarife der besten Anbieter vergleichen und bereits ab 2,79€/M vorsorgen. Ab 2,79€/M: Rechtzeitig vorsorgen & mit einer...
+- *sterbegeldversicherung test* — Pos 1 (ERGO nicht live) — „Sterbeversicherung Testsieger - Testsieger Tarife vergleichen“
+  Sterbegeldversicherung Marktführer im Test bei CHECK24. Nirgendwo Günstiger. Ab 2,79€/M. In nur 2 Minuten die Top Sterbegeldversicherungen v
   Landingpage: https://www.check24.de/sterbegeldversicherung/lp/vergleichen/bis-zu-50-prozent-sparen/
 
 ## Markenraum / Namensvettern (Ad Transparency – kein Brand-Bidding-Nachweis)
@@ -58,4 +58,4 @@
 *Keine Live-Anzeige mit Markenname im Text.*
 
 ---
-*Automatisch erzeugt am 2026-06-03. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
+*Automatisch erzeugt am 2026-06-04. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
