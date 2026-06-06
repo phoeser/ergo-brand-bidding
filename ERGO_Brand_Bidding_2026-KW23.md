@@ -1,6 +1,6 @@
 # ERGO Brand Bidding – 2026-KW23
 
-*Lauf: 2026-06-05 (2026-06-05T03:09:59+00:00) · Provider: dataforseo · Live-Wettbewerber: 0 · Live-Anzeigen: 0 · Namensraum (Ad Transparency): 19 · Trademark: 0*
+*Lauf: 2026-06-06 (2026-06-06T03:06:47+00:00) · Provider: dataforseo · Live-Wettbewerber: 0 · Live-Anzeigen: 0 · Namensraum (Ad Transparency): 19 · Trademark: 0*
 
 > **Hauptsignal = Live-Suche** (echtes Brand-Bidding: Text, Landingpage, Position). Der Namensraum-Abschnitt listet nur Werbetreibende mit passendem Namen aus dem Ad-Transparency-Center – das ist **kein** Nachweis von Brand-Bidding.
 
@@ -51,4 +51,4 @@
 *Keine Live-Anzeige mit Markenname im Text.*
 
 ---
-*Automatisch erzeugt am 2026-06-05. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
+*Automatisch erzeugt am 2026-06-06. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
