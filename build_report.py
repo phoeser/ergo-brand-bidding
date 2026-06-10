@@ -353,7 +353,9 @@ def _fmt_above(s):
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
     if not week_rows:
-        raise SystemExit(f"{week_csv} enthaelt keine Zeilen.")
+        # API-Limit oder kein Werbetraffic: Report aus vorhandener History
+        print(f"  Hinweis: {week_csv} enthaelt keine Zeilen (API-Limit/kein Werbetraffic). "
+              "Report wird aus bestehender History generiert.")
     history, n_added = append_history(week_rows)
     creatives = read_creatives_latest()
 
