@@ -352,7 +352,8 @@ def _fmt_above(s):
 
 def build_report(week_csv):
     week_rows = read_csv(week_csv)
-    if not week_rows:
+    empty_scan = not week_rows
+    if empty_scan:
         # API-Limit oder kein Werbetraffic: Report aus vorhandener History
         print(f"  Hinweis: {week_csv} enthaelt keine Zeilen (API-Limit/kein Werbetraffic). "
               "Report wird aus bestehender History generiert.")
@@ -362,6 +363,11 @@ def build_report(week_csv):
     current_run = latest_run(history)
     cur_rows = [r for r in history if r["run_timestamp"] == current_run]
     current_week = cur_rows[0]["iso_week"]
+    # Wenn kein neuer Scan-Lauf: Wochenbeschriftung auf heutiges Datum setzen
+    if empty_scan:
+        today = dt.date.today()
+        iso_y, iso_w, _ = today.isocalendar()
+        current_week = f"{iso_y}-KW{iso_w:02d}"
     run_date = cur_rows[0]["run_date"]
     provider = cur_rows[0]["provider"]
     clusters = list(dict.fromkeys(r["cluster"] for r in cur_rows))

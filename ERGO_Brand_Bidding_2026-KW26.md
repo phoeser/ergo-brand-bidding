@@ -1,4 +1,4 @@
-# ERGO Brand Bidding – 2026-KW24
+# ERGO Brand Bidding – 2026-KW26
 
 *Lauf: 2026-06-09 (2026-06-09T03:05:42+00:00) · Provider: dataforseo · Live-Wettbewerber: 0 · Live-Anzeigen: 0 · Namensraum (Ad Transparency): 7 · Trademark: 0*
 
