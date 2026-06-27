@@ -21,4 +21,4 @@
 *Keine Live-Anzeige mit Markenname im Text.*
 
 ---
-*Automatisch erzeugt am 2026-06-26. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
+*Automatisch erzeugt am 2026-06-27. Scoring (Live): 0,5·Praesenz + 0,3·Position + 0,2·Persistenz (x100).*
